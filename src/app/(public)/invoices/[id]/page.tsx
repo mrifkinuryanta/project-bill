@@ -52,8 +52,8 @@ export default async function InvoiceViewPage(props: { params: Promise<{ id: str
                 {/* Header Section */}
                 <div className="flex justify-between items-start mb-12">
                     <div className="space-y-1">
-                        {settings.companyLogoUrl ? (
-                            <CompanyLogo src={settings.companyLogoUrl} companyName={settings.companyName} />
+                        {(settings as any).companyLogoUrl ? (
+                            <CompanyLogo src={(settings as any).companyLogoUrl} companyName={settings.companyName} />
                         ) : (
                             <h1 className="text-2xl font-bold tracking-tight text-slate-800">{settings.companyName}</h1>
                         )}
@@ -83,8 +83,8 @@ export default async function InvoiceViewPage(props: { params: Promise<{ id: str
                 {/* Status Badge (Absolute Positioned for style) */}
                 <div className="absolute top-12 right-[50%] translate-x-[50%] print:hidden">
                     {invoice.status === 'paid'
-                        ? <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-300 text-xs py-1 px-3 uppercase tracking-widest font-bold">Paid</Badge>
-                        : <Badge variant="destructive" className="bg-red-100 text-red-800 hover:bg-red-200 border-red-300 text-xs py-1 px-3 uppercase tracking-widest font-bold">Unpaid</Badge>
+                        ? <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800 dark:hover:bg-emerald-900 border text-xs py-1 px-3 uppercase tracking-widest font-bold">Paid</Badge>
+                        : <Badge variant="destructive" className="bg-red-100 text-red-800 hover:bg-red-200 border-red-300 dark:bg-red-950 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-900 border text-xs py-1 px-3 uppercase tracking-widest font-bold">Unpaid</Badge>
                     }
                 </div>
 

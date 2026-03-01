@@ -22,13 +22,18 @@ export default async function DashboardLayout({
   }
 
   const session = await auth();
-  if (!session?.user?.email) {
+  if (!session?.user?.id) {
     redirect('/login');
   }
 
+  const dbUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { name: true, email: true }
+  });
+
   return (
     <SidebarProvider>
-      <AppSidebar />
+      <AppSidebar user={dbUser || session.user} />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />

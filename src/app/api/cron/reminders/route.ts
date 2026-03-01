@@ -3,11 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { sendReminderEmail, ReminderType } from "@/lib/email";
 
 export async function GET(request: Request) {
-    // 1. Validate CRON_SECRET
+    // 1. Validate CRON_SECRET (Default Deny if not set)
     const cronSecret = process.env.CRON_SECRET;
     const authHeader = request.headers.get("authorization");
 
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -84,36 +84,57 @@ export async function GET(request: Request) {
                 const lateFee = currentAmount * 0.05;
                 const newAmount = currentAmount + lateFee;
 
-                await prisma.invoice.update({
-                    where: { id: invoice.id },
-                    data: {
-                        amount: newAmount,
-                        lateFeeApplied: true,
-                    },
-                });
-
                 lateFeeAmountStr = formatter.format(newAmount);
-                lateFeeCount++;
-            }
 
-            // Send reminder email
-            const emailResult = await sendReminderEmail({
-                to: clientEmail,
-                clientName: invoice.project.client.name,
-                projectTitle: invoice.project.title,
-                amountStr: formatter.format(Number(invoice.amount)),
-                paymentLink: invoice.paymentLink,
-                reminderType,
-                lateFeeAmountStr,
-            });
-
-            if (emailResult.success) {
-                await prisma.invoice.update({
-                    where: { id: invoice.id },
-                    data: { lastReminderAt: new Date() },
+                // Send reminder email first before updating DB
+                const emailResult = await sendReminderEmail({
+                    to: clientEmail,
+                    clientName: invoice.project.client.name,
+                    projectTitle: invoice.project.title,
+                    amountStr: formatter.format(Number(invoice.amount)),
+                    paymentLink: invoice.paymentLink,
+                    reminderType,
+                    lateFeeAmountStr,
                 });
-                reminded++;
-                results.push({ invoiceId: invoice.id, action: reminderType });
+
+                if (emailResult.success) {
+                    await prisma.$transaction([
+                        prisma.invoice.update({
+                            where: { id: invoice.id },
+                            data: {
+                                amount: newAmount,
+                                lateFeeApplied: true,
+                            },
+                        }),
+                        prisma.invoice.update({
+                            where: { id: invoice.id },
+                            data: { lastReminderAt: new Date() },
+                        })
+                    ]);
+                    reminded++;
+                    lateFeeCount++;
+                    results.push({ invoiceId: invoice.id, action: reminderType });
+                }
+            } else {
+                // Send reminder email (no late fee)
+                const emailResult = await sendReminderEmail({
+                    to: clientEmail,
+                    clientName: invoice.project.client.name,
+                    projectTitle: invoice.project.title,
+                    amountStr: formatter.format(Number(invoice.amount)),
+                    paymentLink: invoice.paymentLink,
+                    reminderType,
+                    lateFeeAmountStr,
+                });
+
+                if (emailResult.success) {
+                    await prisma.invoice.update({
+                        where: { id: invoice.id },
+                        data: { lastReminderAt: new Date() },
+                    });
+                    reminded++;
+                    results.push({ invoiceId: invoice.id, action: reminderType });
+                }
             }
         }
 

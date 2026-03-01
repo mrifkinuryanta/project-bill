@@ -61,12 +61,24 @@ export async function createPaymentLink(
 
 export function verifyMayarWebhook(payload: string, signature: string): boolean {
     if (!MAYAR_WEBHOOK_SECRET) {
-        console.warn("No MAYAR_WEBHOOK_SECRET provided. Skipping webhook signature verification.");
-        return true;
+        console.error("CRITICAL: No MAYAR_WEBHOOK_SECRET provided. Denying webhook verification.");
+        return false;
     }
 
-    const hmac = crypto.createHmac('sha256', MAYAR_WEBHOOK_SECRET);
-    const digest = hmac.update(payload).digest('hex');
+    try {
+        const hmac = crypto.createHmac('sha256', MAYAR_WEBHOOK_SECRET);
+        const expectedSignature = hmac.update(payload).digest('hex');
 
-    return digest === signature;
+        const sigBuffer = Buffer.from(signature, 'hex');
+        const expectedBuffer = Buffer.from(expectedSignature, 'hex');
+
+        if (sigBuffer.length !== expectedBuffer.length) {
+            return false;
+        }
+
+        return crypto.timingSafeEqual(sigBuffer, expectedBuffer);
+    } catch (error) {
+        console.error("Error verifying webhook signature:", error);
+        return false;
+    }
 }

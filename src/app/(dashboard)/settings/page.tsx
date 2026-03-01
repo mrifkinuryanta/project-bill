@@ -25,7 +25,6 @@ const settingsSchema = z.object({
 })
 
 import { toast } from "sonner"
-import { ProfileSettingsForm } from "./profile-settings-form"
 
 export default function SettingsPage() {
     const [isLoading, setIsLoading] = useState(true)
@@ -89,7 +88,7 @@ export default function SettingsPage() {
         <div className="flex flex-col gap-8 max-w-2xl">
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-                <p className="text-muted-foreground mt-2">Manage your company branding and admin security.</p>
+                <p className="text-muted-foreground mt-2">Manage your company branding.</p>
             </div>
 
             <Form {...form}>
@@ -183,8 +182,6 @@ export default function SettingsPage() {
                     </Button>
                 </form>
             </Form>
-
-            <ProfileSettingsForm />
         </div>
     )
 }

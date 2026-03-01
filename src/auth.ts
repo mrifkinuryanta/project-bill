@@ -16,7 +16,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 password: { label: "Password", type: "password" }
             },
             async authorize(credentials) {
-                console.log("AUTHORIZE CALLED WITH:", credentials);
+                // Note: Not logging credentials object to prevent password disclosure
+
                 if (!credentials?.email || !credentials?.password) {
                     return null
                 }

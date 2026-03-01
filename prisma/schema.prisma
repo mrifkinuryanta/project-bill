@@ -48,7 +48,7 @@ model ProjectItem {
 model Invoice {
   id              String    @id @default(uuid())
   projectId       String
-  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Restrict)
   type            String    // dp, full_payment
   amount          Decimal   @db.Decimal(19, 4)
   status          String    @default("unpaid") // unpaid, paid
