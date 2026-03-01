@@ -49,10 +49,10 @@ const items = [
 
 export function AppSidebar() {
   return (
-    <Sidebar>
+    <Sidebar collapsible="icon">
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>ProjectBill</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-lg font-semibold">ProjectBill</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (

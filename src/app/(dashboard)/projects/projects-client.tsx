@@ -10,6 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Pencil, Trash2, Plus, FileText } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { NumericFormat } from "react-number-format"
+import { ConfirmDialog } from "@/components/confirm-dialog"
 
 type Client = { id: string, name: string }
 
@@ -54,6 +57,10 @@ export function ProjectsClient({ initialProjects, clients }: { initialProjects: 
     const [items, setItems] = useState<ProjectItem[]>([])
     const [newItemDesc, setNewItemDesc] = useState("")
     const [newItemPrice, setNewItemPrice] = useState("")
+
+    // Confirm Dialog State
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+    const [itemRemoveConfirm, setItemRemoveConfirm] = useState<{ idx: number, item: ProjectItem } | null>(null)
 
     // Invoice Form State
     const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false)
@@ -121,11 +128,15 @@ export function ProjectsClient({ initialProjects, clients }: { initialProjects: 
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!clientId) return alert("Please select a client")
+        if (!clientId) {
+            toast.error("Please select a client")
+            return
+        }
 
         // Validate DP does not exceed total price
         if (dpAmount && parseFloat(dpAmount) > parseFloat(totalPrice)) {
-            return alert("DP amount cannot exceed total price")
+            toast.error("DP amount cannot exceed total price")
+            return
         }
 
         setIsLoading(true)
@@ -157,15 +168,16 @@ export function ProjectsClient({ initialProjects, clients }: { initialProjects: 
 
             if (res.ok) {
                 setIsDialogOpen(false)
+                toast.success(editingId ? "Project updated" : "Project created")
                 router.refresh()
                 window.location.reload()
             } else {
                 const data = await res.json().catch(() => null)
-                alert(data?.error || "Failed to save project")
+                toast.error(data?.error || "Failed to save project")
             }
         } catch (error) {
             console.error(error)
-            alert("Network error. Please try again.")
+            toast.error("Network error. Please try again.")
         } finally {
             setIsLoading(false)
         }
@@ -192,28 +204,35 @@ export function ProjectsClient({ initialProjects, clients }: { initialProjects: 
 
             if (res.ok) {
                 setIsInvoiceDialogOpen(false)
+                toast.success("Invoice generated successfully")
                 router.push('/invoices')
             } else {
-                alert("Failed to create invoice")
+                const data = await res.json().catch(() => null)
+                toast.error(data?.error || "Failed to create invoice")
             }
         } catch (error) {
             console.error(error)
+            toast.error("Network error while generating invoice")
         } finally {
             setIsLoading(false)
         }
     }
 
     const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this project?")) return
 
         try {
             const res = await fetch(`/api/projects/${id}`, { method: "DELETE" })
             if (res.ok) {
                 setProjects(projects.filter(p => p.id !== id))
+                toast.success("Project deleted")
                 router.refresh()
+            } else {
+                const errData = await res.json().catch(() => ({}))
+                toast.error(errData.error || "Failed to delete project")
             }
         } catch (error) {
             console.error(error)
+            toast.error("Network error while deleting")
         }
     }
 
@@ -284,21 +303,31 @@ export function ProjectsClient({ initialProjects, clients }: { initialProjects: 
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="totalPrice">Total Price</Label>
-                                        <Input
+                                        <NumericFormat
                                             id="totalPrice"
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
                                             value={items.length > 0 ? items.reduce((sum, item) => sum + Number(item.price), 0) : totalPrice}
-                                            onChange={e => setTotalPrice(e.target.value)}
+                                            onValueChange={(values) => setTotalPrice(values.value)}
                                             required
                                             disabled={items.length > 0}
-                                            placeholder={items.length > 0 ? "Auto-calculated" : "1000.00"}
+                                            placeholder={items.length > 0 ? "Auto-calculated" : "1,000"}
+                                            thousandSeparator="."
+                                            decimalSeparator=","
+                                            prefix={currency === "IDR" ? "Rp " : "$ "}
+                                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                                         />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="dpAmount">DP Amount (Optional)</Label>
-                                        <Input id="dpAmount" type="number" step="0.01" min="0" value={dpAmount} onChange={e => setDpAmount(e.target.value)} placeholder="300.00" />
+                                        <NumericFormat
+                                            id="dpAmount"
+                                            value={dpAmount}
+                                            onValueChange={(values) => setDpAmount(values.value)}
+                                            placeholder="300"
+                                            thousandSeparator="."
+                                            decimalSeparator=","
+                                            prefix={currency === "IDR" ? "Rp " : "$ "}
+                                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                                        />
                                     </div>
                                 </div>
 
@@ -317,23 +346,14 @@ export function ProjectsClient({ initialProjects, clients }: { initialProjects: 
                                                             type="button"
                                                             onClick={async () => {
                                                                 if (editingId && item.id) {
-                                                                    if (!confirm("Remove this item?")) return
-                                                                    try {
-                                                                        const res = await fetch(`/api/projects/${editingId}/items/${item.id}`, { method: "DELETE" })
-                                                                        if (res.ok) {
-                                                                            const data = await res.json()
-                                                                            setItems(items.filter((_, i) => i !== idx))
-                                                                            setTotalPrice(String(data.projectTotal))
-                                                                        } else {
-                                                                            const errData = await res.json().catch(() => ({}))
-                                                                            alert(errData.error || "Failed to delete item.")
-                                                                        }
-                                                                    } catch { alert("Network error") }
+                                                                    setItemRemoveConfirm({ idx, item })
                                                                 } else {
                                                                     setItems(items.filter((_, i) => i !== idx))
+                                                                    toast.success("Item removed")
                                                                 }
                                                             }}
-                                                            className="text-red-500 hover:text-red-700 text-xs px-1"
+                                                            className="text-red-500 hover:text-red-700 text-[10px] font-bold px-1"
+                                                            title="Remove"
                                                         >
                                                             ✕
                                                         </button>
@@ -350,12 +370,13 @@ export function ProjectsClient({ initialProjects, clients }: { initialProjects: 
                                             onChange={(e) => setNewItemDesc(e.target.value)}
                                             className="flex-1 text-sm h-9"
                                         />
-                                        <Input
-                                            type="number"
-                                            placeholder="Price"
+                                        <NumericFormat
                                             value={newItemPrice}
-                                            onChange={(e) => setNewItemPrice(e.target.value)}
-                                            className="w-[120px] text-sm h-9"
+                                            onValueChange={(values) => setNewItemPrice(values.value)}
+                                            placeholder="Price"
+                                            thousandSeparator="."
+                                            decimalSeparator=","
+                                            className="w-[120px] flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                                         />
                                         <Button
                                             type="button"
@@ -378,9 +399,9 @@ export function ProjectsClient({ initialProjects, clients }: { initialProjects: 
                                                             setNewItemPrice("")
                                                         } else {
                                                             const errData = await res.json().catch(() => ({}))
-                                                            alert(errData.error || "Failed to add item.")
+                                                            toast.error(errData.error || "Failed to add item.")
                                                         }
-                                                    } catch { alert("Network error") }
+                                                    } catch { toast.error("Network error") }
                                                 } else {
                                                     setItems([...items, { description: newItemDesc, price: newItemPrice }])
                                                     setNewItemDesc("")
@@ -466,9 +487,9 @@ export function ProjectsClient({ initialProjects, clients }: { initialProjects: 
                                 </DialogFooter>
                             </form>
                         </DialogContent>
-                    </Dialog>
-                </div>
-            </div>
+                    </Dialog >
+                </div >
+            </div >
 
             <div className="rounded-md border">
                 <Table>
@@ -486,8 +507,21 @@ export function ProjectsClient({ initialProjects, clients }: { initialProjects: 
                     <TableBody>
                         {filteredProjects.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="h-24 text-center">
-                                    No projects found.
+                                <TableCell colSpan={7} className="h-64 text-center">
+                                    <div className="flex flex-col items-center justify-center gap-3 py-8">
+                                        <div className="h-16 w-16 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground/50">
+                                            <FileText className="h-8 w-8" />
+                                        </div>
+                                        <h3 className="font-semibold text-lg">No Projects Found</h3>
+                                        <p className="text-sm text-muted-foreground max-w-sm">
+                                            {searchQuery ? `We couldn't find any projects matching "${searchQuery}".` : "You haven't added any projects yet. Create your first project to start tracking work."}
+                                        </p>
+                                        {!searchQuery && (
+                                            <Button onClick={() => handleOpenDialog()} variant="outline" className="mt-2">
+                                                <Plus className="mr-2 h-4 w-4" /> Add Your First Project
+                                            </Button>
+                                        )}
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -508,7 +542,7 @@ export function ProjectsClient({ initialProjects, clients }: { initialProjects: 
                                             <Pencil className="h-4 w-4" />
                                             <span className="sr-only">Edit</span>
                                         </Button>
-                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(project.id)}>
+                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setDeleteConfirmId(project.id)}>
                                             <Trash2 className="h-4 w-4" />
                                             <span className="sr-only">Delete</span>
                                         </Button>
@@ -519,6 +553,47 @@ export function ProjectsClient({ initialProjects, clients }: { initialProjects: 
                     </TableBody>
                 </Table>
             </div>
+
+            {/* Delete Project Confirmation */}
+            <ConfirmDialog
+                open={!!deleteConfirmId}
+                onOpenChange={(open) => !open && setDeleteConfirmId(null)}
+                title="Delete Project?"
+                description="This will permanently delete this project and all its invoices. This action cannot be undone."
+                confirmLabel="Delete"
+                onConfirm={() => {
+                    if (deleteConfirmId) {
+                        handleDelete(deleteConfirmId)
+                        setDeleteConfirmId(null)
+                    }
+                }}
+            />
+
+            {/* Remove Item Confirmation */}
+            <ConfirmDialog
+                open={!!itemRemoveConfirm}
+                onOpenChange={(open) => !open && setItemRemoveConfirm(null)}
+                title="Remove Item?"
+                description="This will remove this deliverable from the project scope and adjust the total price."
+                confirmLabel="Remove"
+                onConfirm={async () => {
+                    if (itemRemoveConfirm && editingId && itemRemoveConfirm.item.id) {
+                        try {
+                            const res = await fetch(`/api/projects/${editingId}/items/${itemRemoveConfirm.item.id}`, { method: "DELETE" })
+                            if (res.ok) {
+                                const data = await res.json()
+                                setItems(items.filter((_, i) => i !== itemRemoveConfirm.idx))
+                                setTotalPrice(String(data.projectTotal))
+                                toast.success("Item removed")
+                            } else {
+                                const errData = await res.json().catch(() => ({}))
+                                toast.error(errData.error || "Failed to delete item.")
+                            }
+                        } catch { toast.error("Network error") }
+                    }
+                    setItemRemoveConfirm(null)
+                }}
+            />
         </div>
     )
 }

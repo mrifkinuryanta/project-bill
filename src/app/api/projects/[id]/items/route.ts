@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 
 export async function POST(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const session = await auth();
+        if (!session) return new NextResponse("Unauthorized", { status: 401 });
         const { id: projectId } = await params;
         const json = await request.json();
         const { description, price } = json;

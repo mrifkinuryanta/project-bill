@@ -2,9 +2,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createPaymentLink } from "@/lib/mayar";
 import { sendInvoiceEmail } from "@/lib/email";
+import { auth } from "@/auth";
 
 export async function POST(request: Request) {
     try {
+        const session = await auth();
+        if (!session) return new NextResponse("Unauthorized", { status: 401 });
         const json = await request.json();
         const { projectId } = json;
 

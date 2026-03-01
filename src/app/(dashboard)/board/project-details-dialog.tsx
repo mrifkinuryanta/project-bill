@@ -5,6 +5,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
+import { toast } from "sonner"
+import { NumericFormat } from "react-number-format"
+import { ConfirmDialog } from "@/components/confirm-dialog"
 
 type ProjectItem = {
     id: string
@@ -36,6 +39,7 @@ export function ProjectDetailsDialog({
     const [newItemDesc, setNewItemDesc] = useState("")
     const [newItemPrice, setNewItemPrice] = useState("")
     const [isSaving, setIsSaving] = useState(false)
+    const [deleteItemId, setDeleteItemId] = useState<string | null>(null)
 
     const formatCurrency = (amount: string | number) => {
         return new Intl.NumberFormat(currency === "IDR" ? "id-ID" : "en-US", {
@@ -61,19 +65,20 @@ export function ProjectDetailsDialog({
                 onItemAdded(data.item, data.projectTotal)
                 setNewItemDesc("")
                 setNewItemPrice("")
+                toast.success("Scope item added")
             } else {
                 const errData = await res.json().catch(() => ({}))
-                alert(errData.error || "Failed to add scope item.")
+                toast.error(errData.error || "Failed to add scope item.")
             }
         } catch (error) {
             console.error("Failed to add logic", error)
+            toast.error("Network error while adding item")
         } finally {
             setIsSaving(false)
         }
     }
 
     const handleDeleteItem = async (itemId: string) => {
-        if (!confirm("Remove this item?")) return
 
         try {
             const res = await fetch(`/api/projects/${projectId}/items/${itemId}`, {
@@ -83,12 +88,14 @@ export function ProjectDetailsDialog({
             if (res.ok) {
                 const data = await res.json()
                 onItemDeleted(itemId, data.projectTotal)
+                toast.success("Item removed")
             } else {
                 const errData = await res.json().catch(() => ({}))
-                alert(errData.error || "Failed to delete item.")
+                toast.error(errData.error || "Failed to delete item.")
             }
         } catch (error) {
             console.error("Failed to delete", error)
+            toast.error("Network error while deleting item")
         }
     }
 
@@ -118,7 +125,7 @@ export function ProjectDetailsDialog({
                                     <div className="flex items-center gap-3">
                                         <span className="font-medium">{formatCurrency(item.price)}</span>
                                         <button
-                                            onClick={() => handleDeleteItem(item.id)}
+                                            onClick={() => setDeleteItemId(item.id)}
                                             className="text-red-500 hover:text-red-700 text-xs font-semibold px-2"
                                             title="Remove Item"
                                         >
@@ -141,12 +148,13 @@ export function ProjectDetailsDialog({
                                 onChange={(e) => setNewItemDesc(e.target.value)}
                                 className="flex-1 text-sm h-8"
                             />
-                            <Input
-                                type="number"
-                                placeholder="Price"
+                            <NumericFormat
                                 value={newItemPrice}
-                                onChange={(e) => setNewItemPrice(e.target.value)}
-                                className="w-[120px] text-sm h-8"
+                                onValueChange={(values) => setNewItemPrice(values.value)}
+                                placeholder="Price"
+                                thousandSeparator="."
+                                decimalSeparator=","
+                                className="w-[120px] flex h-8 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                             />
                         </div>
                         <Button
@@ -160,6 +168,21 @@ export function ProjectDetailsDialog({
                     </div>
                 </div>
             </DialogContent>
+
+            {/* Delete Item Confirmation */}
+            <ConfirmDialog
+                open={!!deleteItemId}
+                onOpenChange={(open) => !open && setDeleteItemId(null)}
+                title="Remove Item?"
+                description="This will remove this deliverable from the project scope and adjust the total price."
+                confirmLabel="Remove"
+                onConfirm={() => {
+                    if (deleteItemId) {
+                        handleDeleteItem(deleteItemId)
+                        setDeleteItemId(null)
+                    }
+                }}
+            />
         </Dialog>
     )
 }

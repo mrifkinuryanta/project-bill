@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useRouter } from "next/navigation"
 import { ProjectDetailsDialog } from "./project-details-dialog"
 import { CheckCircle2, PartyPopper, FileText, SkipForward, Archive } from "lucide-react"
+import { toast } from "sonner"
 
 type Client = { id: string, name: string }
 type ProjectItem = { id: string, description: string, price: string }
@@ -136,14 +137,14 @@ export function DashboardClient({ initialProjects }: { initialProjects: Project[
                 }
 
                 if (data.emailSent) {
-                    alert("Invoice generated and email dispatched to client")
+                    toast.success("Invoice generated and email dispatched to client")
                 } else {
-                    alert("Invoice generated successfully. (Email skipped or mocked)")
+                    toast.success("Invoice generated successfully. (Email skipped or mocked)")
                 }
                 router.refresh()
             } else {
                 console.error("Failed to generate invoice")
-                alert("Failed to generate invoice")
+                toast.error("Failed to generate invoice")
             }
         } catch (error) {
             console.error(error)
@@ -215,10 +216,10 @@ export function DashboardClient({ initialProjects }: { initialProjects: Project[
                                             <Card
                                                 key={project.id}
                                                 className={`shadow-sm transition-all ${isPaidDone
-                                                        ? "border-l-4 border-l-emerald-500 bg-emerald-50/30 opacity-70 dark:bg-emerald-950/20"
-                                                        : isDone
-                                                            ? "border-l-4 border-l-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30"
-                                                            : ""
+                                                    ? "border-l-4 border-l-emerald-500 bg-emerald-50/30 opacity-70 dark:bg-emerald-950/20"
+                                                    : isDone
+                                                        ? "border-l-4 border-l-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30"
+                                                        : ""
                                                     }`}
                                             >
                                                 <CardHeader className="p-4 pb-2">

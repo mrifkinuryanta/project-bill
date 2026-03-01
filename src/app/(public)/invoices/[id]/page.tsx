@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { PayButton } from "./pay-button"
 import { PrintButton } from "./print-button"
+import { CompanyLogo } from "@/components/company-logo"
 
 export default async function InvoiceViewPage(props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
@@ -21,6 +22,7 @@ export default async function InvoiceViewPage(props: { params: Promise<{ id: str
         companyName: "ProjectBill Consulting",
         companyAddress: null,
         companyEmail: null,
+        companyLogoUrl: null,
         bankName: null,
         bankAccount: null,
         accountHolder: null,
@@ -50,7 +52,11 @@ export default async function InvoiceViewPage(props: { params: Promise<{ id: str
                 {/* Header Section */}
                 <div className="flex justify-between items-start mb-12">
                     <div className="space-y-1">
-                        <h1 className="text-2xl font-bold tracking-tight text-slate-800">{settings.companyName}</h1>
+                        {settings.companyLogoUrl ? (
+                            <CompanyLogo src={settings.companyLogoUrl} companyName={settings.companyName} />
+                        ) : (
+                            <h1 className="text-2xl font-bold tracking-tight text-slate-800">{settings.companyName}</h1>
+                        )}
                         <p className="text-sm text-slate-500 max-w-[250px] whitespace-pre-wrap">
                             {settings.companyAddress || "123 Technology Drive\nInnovation City, TX 78701"}
                             <br />

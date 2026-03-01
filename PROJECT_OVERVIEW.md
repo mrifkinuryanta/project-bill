@@ -68,18 +68,42 @@ The full MVP through V1.2 features have been successfully implemented:
     - Done cards styled with emerald accents, checkmark icons, and "Completed & Paid" badges.
     - Archive toggle hides fully-paid Done projects to keep the board clean.
 
+11. **First-Run Setup & Admin Management (Sprint 7):**
+    - Secure onboarding flow inspired by n8n: `/setup` route creates the first Admin user.
+    - `/setup` auto-locks after the first user is registered, redirecting to `/login`.
+    - Profile Settings form allows the logged-in admin to change their password securely.
+    - Emergency CLI password reset tool: `npm run reset-password <email> <newPassword>`.
+
+12. **UI/UX & Aesthetics Polish (Sprint 7):**
+    - Replaced all native `alert()`/`confirm()` dialogs with Shadcn `sonner` Toasts and `AlertDialog` components.
+    - Implemented `react-number-format` for auto-formatted IDR currency inputs across Projects and Board views.
+    - Added visually engaging Empty States with Lucide icons for Clients and Projects tables.
+    - Company Logo URL support in Settings with live preview; displayed on public invoice view alongside company name.
+    - Sidebar collapses to icon-only mode instead of disappearing completely.
+
+13. **Architecture & Data Security (Sprint 7):**
+    - Soft Delete for Clients: `isArchived` flag — clients with paid invoices are archived, not hard-deleted.
+    - Database Indexing: `@@index([status])` on Project and Invoice, `@@index([clientId])` on Project.
+    - API Security Layer: All internal `/api` routes secured with NextAuth `auth()` session checks.
+    - Project deletion guard: Projects with unpaid invoices cannot be deleted.
+    - All delete confirmations use proper `ConfirmDialog` (AlertDialog) component instead of native browser dialogs.
+
 ## Future Development Plan (V2 & Beyond)
 
-To continue the development of ProjectBill, subsequent agents should focus on:
+All planned features for V1.2 have been completed. Potential future enhancements:
 
-### Phase 10: Multi-Currency Payment Gateway
-- **Goal:** Expand automatic payments to USD.
-- **Tasks:** Wire up Stripe Checkout for invoices where `currency === 'USD'`, adding a separate webhook listener alongside Mayar.id.
+- **Multi-Currency Payment Gateway** — Currently disabled. If needed, re-enable USD in `projects-client.tsx` and integrate Stripe Checkout for USD invoices.
+- **Client Portal** — A dedicated login area for clients to view all their invoices and project status.
+- **Recurring Invoices** — Auto-generate monthly invoices for retainer-based projects.
+- **File Attachments** — Allow uploading deliverables or contracts to projects.
 
 ## Notes for the Next Agent
 - All layout components and global CSS are already set up.
 - Use Shadcn UI (`npx shadcn@latest add ...`) for any new UI components to maintain visual consistency.
 - Ensure that any updates to `prisma/schema.prisma` are followed by `npx prisma db push` and `npx prisma generate`.
 - Do NOT use `url` inside the `datasource` block in `schema.prisma`. This project uses Prisma 7, and the `url` must be defined inside `prisma.config.ts`.
+- Standalone Node scripts (e.g. `scripts/reset-password.js`) must use the `pg` + `@prisma/adapter-pg` pattern to connect to the database, matching `src/lib/prisma.ts`.
 - USD currency is temporarily disabled. The schema and logic still support it — re-enable the `SelectItem` in `projects-client.tsx` and uncomment USD chart data in `page.tsx` (dashboard) when ready.
 - All payments are handled exclusively via **Mayar.id** (IDR). Manual bank transfer has been fully removed.
+- All delete confirmation dialogs use the reusable `ConfirmDialog` component (`src/components/confirm-dialog.tsx`).
+- The sidebar uses `collapsible="icon"` mode — it shrinks to icons when collapsed.

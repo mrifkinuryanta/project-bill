@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Pencil, Trash2, Plus } from "lucide-react"
+import { Pencil, Trash2, Plus, Users } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { ConfirmDialog } from "@/components/confirm-dialog"
 
 type Client = {
     id: string
@@ -28,6 +30,7 @@ export function ClientsClient({ initialClients }: { initialClients: Client[] }) 
     const [editingId, setEditingId] = useState<string | null>(null)
     const [name, setName] = useState("")
     const [email, setEmail] = useState("")
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
     const handleOpenDialog = (client?: Client) => {
         if (client) {
@@ -80,16 +83,19 @@ export function ClientsClient({ initialClients }: { initialClients: Client[] }) 
     }
 
     const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this client?")) return
 
         try {
             const res = await fetch(`/api/clients/${id}`, { method: "DELETE" })
             if (res.ok) {
                 setClients(clients.filter(c => c.id !== id))
+                toast.success("Client deleted")
                 router.refresh()
+            } else {
+                toast.error("Failed to delete client")
             }
         } catch (error) {
             console.error(error)
+            toast.error("Network error while deleting")
         }
     }
 
@@ -164,8 +170,21 @@ export function ClientsClient({ initialClients }: { initialClients: Client[] }) 
                     <TableBody>
                         {filteredClients.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={4} className="h-24 text-center">
-                                    No clients found.
+                                <TableCell colSpan={4} className="h-64 text-center">
+                                    <div className="flex flex-col items-center justify-center gap-3 py-8">
+                                        <div className="h-16 w-16 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground/50">
+                                            <Users className="h-8 w-8" />
+                                        </div>
+                                        <h3 className="font-semibold text-lg">No Clients Found</h3>
+                                        <p className="text-sm text-muted-foreground max-w-sm">
+                                            {searchQuery ? `We couldn't find any clients matching "${searchQuery}".` : "You haven't added any clients yet. Add your first client to start doing business."}
+                                        </p>
+                                        {!searchQuery && (
+                                            <Button onClick={() => handleOpenDialog()} variant="outline" className="mt-2">
+                                                <Plus className="mr-2 h-4 w-4" /> Add Your First Client
+                                            </Button>
+                                        )}
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -179,7 +198,7 @@ export function ClientsClient({ initialClients }: { initialClients: Client[] }) 
                                             <Pencil className="h-4 w-4" />
                                             <span className="sr-only">Edit</span>
                                         </Button>
-                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(client.id)}>
+                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setDeleteConfirmId(client.id)}>
                                             <Trash2 className="h-4 w-4" />
                                             <span className="sr-only">Delete</span>
                                         </Button>
@@ -190,6 +209,21 @@ export function ClientsClient({ initialClients }: { initialClients: Client[] }) 
                     </TableBody>
                 </Table>
             </div>
+
+            {/* Delete Client Confirmation */}
+            <ConfirmDialog
+                open={!!deleteConfirmId}
+                onOpenChange={(open) => !open && setDeleteConfirmId(null)}
+                title="Delete Client?"
+                description="If this client has paid invoices, they will be archived instead of permanently deleted."
+                confirmLabel="Delete"
+                onConfirm={() => {
+                    if (deleteConfirmId) {
+                        handleDelete(deleteConfirmId)
+                        setDeleteConfirmId(null)
+                    }
+                }}
+            />
         </div>
     )
 }

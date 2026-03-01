@@ -4,6 +4,7 @@ import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/s
 import { AppSidebar } from "@/components/app-sidebar"
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
+import { prisma } from "@/lib/prisma"
 
 export const metadata: Metadata = {
   title: "ProjectBill",
@@ -15,6 +16,11 @@ export default async function DashboardLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const userCount = await prisma.user.count();
+  if (userCount === 0) {
+    redirect('/setup');
+  }
+
   const session = await auth();
   if (!session?.user?.email) {
     redirect('/login');

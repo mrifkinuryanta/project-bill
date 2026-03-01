@@ -21,7 +21,11 @@ const settingsSchema = z.object({
     companyName: z.string().min(2, "Company Name must be at least 2 characters."),
     companyAddress: z.string().optional(),
     companyEmail: z.string().email("Invalid email address").or(z.literal("")).optional(),
+    companyLogoUrl: z.string().url("Must be a valid URL").or(z.literal("")).optional(),
 })
+
+import { toast } from "sonner"
+import { ProfileSettingsForm } from "./profile-settings-form"
 
 export default function SettingsPage() {
     const [isLoading, setIsLoading] = useState(true)
@@ -33,6 +37,7 @@ export default function SettingsPage() {
             companyName: "ProjectBill Consulting",
             companyAddress: "",
             companyEmail: "",
+            companyLogoUrl: "",
         },
     })
 
@@ -47,6 +52,7 @@ export default function SettingsPage() {
                     companyName: data.companyName || "",
                     companyAddress: data.companyAddress || "",
                     companyEmail: data.companyEmail || "",
+                    companyLogoUrl: data.companyLogoUrl || "",
                 })
             } catch (error) {
                 console.error("Error loading settings:", error)
@@ -66,10 +72,10 @@ export default function SettingsPage() {
                 body: JSON.stringify(values),
             })
             if (!res.ok) throw new Error("Failed to update settings")
-            alert("Settings updated successfully!")
+            toast.success("Settings updated successfully!")
         } catch (error) {
             console.error(error)
-            alert("Failed to save settings.")
+            toast.error("Failed to save settings.")
         } finally {
             setIsSaving(false)
         }
@@ -80,10 +86,10 @@ export default function SettingsPage() {
     }
 
     return (
-        <div className="flex flex-col gap-6 max-w-2xl">
+        <div className="flex flex-col gap-8 max-w-2xl">
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-                <p className="text-muted-foreground mt-2">Manage your company branding and billing information.</p>
+                <p className="text-muted-foreground mt-2">Manage your company branding and admin security.</p>
             </div>
 
             <Form {...form}>
@@ -101,6 +107,42 @@ export default function SettingsPage() {
                                         <Input placeholder="Acme Corp" {...field} />
                                     </FormControl>
                                     <FormDescription>This will appear on your invoices.</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="companyLogoUrl"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Company Logo URL (Optional)</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="https://i.imgur.com/yourlogo.png" {...field} />
+                                    </FormControl>
+                                    <FormDescription>
+                                        Paste a <strong>direct image link</strong> (ending in .png, .jpg, .svg, etc.). You can upload your logo to <a href="https://imgur.com" target="_blank" rel="noopener noreferrer" className="underline text-blue-600">Imgur</a> or <a href="https://imgbb.com" target="_blank" rel="noopener noreferrer" className="underline text-blue-600">ImgBB</a> to get a direct URL.
+                                    </FormDescription>
+                                    {field.value && (
+                                        <div className="mt-2 p-3 border rounded-md bg-muted/30">
+                                            <p className="text-xs text-muted-foreground mb-2">Preview:</p>
+                                            <img
+                                                src={field.value}
+                                                alt="Logo preview"
+                                                className="h-12 w-auto object-contain"
+                                                onError={(e) => {
+                                                    (e.target as HTMLImageElement).style.display = 'none';
+                                                    const parent = (e.target as HTMLImageElement).parentElement;
+                                                    if (parent && !parent.querySelector('.error-msg')) {
+                                                        const errEl = document.createElement('p');
+                                                        errEl.className = 'text-xs text-red-500 error-msg';
+                                                        errEl.textContent = '⚠ Failed to load image. Make sure the URL points directly to an image file, not an HTML page.';
+                                                        parent.appendChild(errEl);
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                    )}
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -141,6 +183,8 @@ export default function SettingsPage() {
                     </Button>
                 </form>
             </Form>
+
+            <ProfileSettingsForm />
         </div>
     )
 }

@@ -9,10 +9,11 @@ datasource db {
 model Client {
   id        String    @id @default(uuid())
   name      String
-  email     String?
-  projects  Project[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  email      String?
+  isArchived Boolean   @default(false)
+  projects   Project[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 }
 
 model Project {
@@ -29,6 +30,9 @@ model Project {
   deadline   DateTime?
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
+
+  @@index([status])
+  @@index([clientId])
 }
 
 model ProjectItem {
@@ -56,6 +60,8 @@ model Invoice {
   lateFeeApplied  Boolean   @default(false)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+
+  @@index([status])
 }
 
 model User {
@@ -72,5 +78,6 @@ model Settings {
   companyName     String   @default("ProjectBill Consulting")
   companyAddress  String?  
   companyEmail    String?
+  companyLogoUrl  String?
   updatedAt       DateTime @updatedAt
 }

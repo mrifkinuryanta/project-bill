@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 
 export async function DELETE(
     request: Request,
     { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
     try {
+        const session = await auth();
+        if (!session) return new NextResponse("Unauthorized", { status: 401 });
         const { id: projectId, itemId } = await params;
 
         const item = await prisma.projectItem.findUnique({
