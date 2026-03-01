@@ -9,9 +9,9 @@ ProjectBill is a web-based, self-hosted invoicing and project tracking applicati
 - **ORM:** Prisma
 - **Language:** TypeScript
 
-## Current State: Phase 1-11 (V1.1 Complete)
+## Current State: V1.2 Complete
 
-The Minimum Viable Product (MVP) and advanced V1.1 features have been successfully implemented:
+The full MVP through V1.2 features have been successfully implemented:
 
 1. **Infrastructure & Core Entity (Phase 1-2):**
    - Next.js 15+ App Router, Tailwind CSS, Shadcn UI setup.
@@ -51,9 +51,22 @@ The Minimum Viable Product (MVP) and advanced V1.1 features have been successful
    - Clean, A4-ready layouts that hide UI clutter automatically during print.
 
 8. **Settings & Branding Customization (Phase 11):**
-   - Created a central `Settings` state in the database mapping to a singleton global configuration.
-   - Developed a UI settings panel using `react-hook-form` to configure business Name, Address, Email, and Bank Details.
-   - Integrated dynamic settings fetch into public invoices, abandoning generic hardcoded templates.
+   - Created a central `Settings` singleton in the database (`id: "global"`).
+   - UI settings panel (`/settings`) to configure Company Name, Address, and Contact Email.
+   - Invoice view dynamically fetches company info from Settings.
+
+9. **Invoice Detail Items & IDR Focus (V1.2 Patch):**
+   - Public invoice view now renders individual project item line-items if the project has scope items.
+   - Automatically shows a "Less: Down Payment" deduction row for balance invoices.
+   - USD currency option temporarily disabled across the app (Projects, Dashboard charts).
+   - Manual bank transfer payment removed entirely (UI, API, and DB schema cleaned up).
+   - Email "Send" button auto-disabled for already-paid invoices.
+
+10. **Task Board Completion Sequence (Sprint 6):**
+    - Auto-invoice prompt dialog appears when moving a project to "Done".
+    - Options: "Generate Invoice Now" or "Skip for Now".
+    - Done cards styled with emerald accents, checkmark icons, and "Completed & Paid" badges.
+    - Archive toggle hides fully-paid Done projects to keep the board clean.
 
 ## Future Development Plan (V2 & Beyond)
 
@@ -65,6 +78,8 @@ To continue the development of ProjectBill, subsequent agents should focus on:
 
 ## Notes for the Next Agent
 - All layout components and global CSS are already set up.
-- Use Shadcn UI (`npx shadcn@latest add ...`) for any new UI components to maintain visual consistency. 
+- Use Shadcn UI (`npx shadcn@latest add ...`) for any new UI components to maintain visual consistency.
 - Ensure that any updates to `prisma/schema.prisma` are followed by `npx prisma db push` and `npx prisma generate`.
 - Do NOT use `url` inside the `datasource` block in `schema.prisma`. This project uses Prisma 7, and the `url` must be defined inside `prisma.config.ts`.
+- USD currency is temporarily disabled. The schema and logic still support it — re-enable the `SelectItem` in `projects-client.tsx` and uncomment USD chart data in `page.tsx` (dashboard) when ready.
+- All payments are handled exclusively via **Mayar.id** (IDR). Manual bank transfer has been fully removed.
