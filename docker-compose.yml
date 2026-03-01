@@ -1,0 +1,22 @@
+services:
+  db:
+    image: postgres:18
+    container_name: projectbill_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-projectbill_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-projectbill_password}
+      POSTGRES_DB: ${POSTGRES_DB:-projectbill_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - projectbill_pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  projectbill_pgdata:
