@@ -81,14 +81,26 @@ test.describe("Terms of Service Acceptance Flow", () => {
     // Verify dialog content is visible
     await expect(page.getByText("1. No revisions.")).toBeVisible();
 
+    // 4. Scroll to the bottom of the terms container
+    // We target the scrollable container. Since we are using standard Tailwind utility 'overflow-y-auto', 
+    // let's grab the container holding the terms text.
+    const termsContainer = page.locator('.overflow-y-auto').first();
+    await termsContainer.evaluate((node) => {
+      node.scrollTo(0, node.scrollHeight);
+    });
+
+    // Wait a brief moment for the scroll event listener to trigger State update
+    await page.waitForTimeout(500);
+
     // 4. Try to click Agree without checking the box (Button should be disabled)
     const acceptButton = page.getByRole("button", {
-      name: "Digitally Sign & Accept",
+      name: "Sign Agreement",
     });
     await expect(acceptButton).toBeDisabled();
 
     // 5. Check the "I agree" box
-    await page.getByRole("checkbox").check();
+    // Because it's a visually hidden checkbox covered by custom tailwind <div>, we must force it
+    await page.getByRole("checkbox").check({ force: true });
     await expect(acceptButton).toBeEnabled();
 
     // 6. Click Accept

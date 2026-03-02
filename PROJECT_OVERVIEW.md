@@ -109,6 +109,12 @@ The full MVP through V1.2 features have been successfully implemented:
     - **Professional Signature Flow:** A clean "Digital Agreement Required" banner triggers a full-screen, professional legal document modal. Clients must check an agreement box and accept terms. The exact timestamp is securely recorded via `PATCH /api/projects/[id]/accept-terms`.
     - **Public View Theming Guard:** `next-themes` dark mode is explicitly overridden on `/invoices/[id]` (forced light mode) to preserve the professional black-on-white paper aesthetic regardless of the client's OS/device preferences.
 
+17. **SOW Legal Hardening & Audit Trails (Sprint 10):**
+    - **Audit Trail Recording:** Captured `termsAcceptedIp` and the project's `updatedAt` as a `termsVersionId` in the database to legally lock the state of the SOW upon signature.
+    - **Scroll-to-Bottom Enforcement:** Modified the Terms Modal UI so the "Accept" checkbox is disabled until the client actually scrolls to the very bottom of the contract.
+    - **PDF Generation:** Integrated `@react-pdf/renderer` to generate a legally compliant SOW document on-the-fly via `/api/projects/[id]/sow-pdf`.
+    - **Client Receipt:** Added a "Download PDF" functionality to the success banner after the client accepts the digital contract, complete with an Audit Trail footer detailing the IP address and exact timestamp.
+
 ## Upcoming: Sprint 11 (V2 Feature Expansion)
 The next development cycle will focus on expanding core functionality to support a wider array of business models. Potential candidates for Sprint 11:
 1. **Multi-Currency Payment Gateway** (Stripe integration for USD invoices).

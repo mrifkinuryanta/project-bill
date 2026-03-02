@@ -14,7 +14,7 @@ export async function PATCH(
 
     const project = await prisma.project.findUnique({
       where: { id },
-      select: { terms: true, termsAcceptedAt: true },
+      select: { terms: true, termsAcceptedAt: true, updatedAt: true },
     });
 
     if (!project) {
@@ -35,10 +35,17 @@ export async function PATCH(
       );
     }
 
+    // Extract IP address from headers
+    const forwardedFor = request.headers.get("x-forwarded-for");
+    const realIp = request.headers.get("x-real-ip");
+    const ip = forwardedFor ? forwardedFor.split(",")[0].trim() : (realIp || "Unknown");
+
     const updatedProject = await prisma.project.update({
       where: { id },
       data: {
         termsAcceptedAt: new Date(),
+        termsAcceptedIp: ip,
+        termsVersionId: project.updatedAt.toISOString(),
       },
     });
 

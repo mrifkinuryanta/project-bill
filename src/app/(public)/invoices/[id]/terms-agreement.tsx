@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, ShieldCheck, FileCheck2, CheckCircle2 } from "lucide-react";
+import { Loader2, ShieldCheck, FileCheck2, CheckCircle2, Download } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
 } from "@/components/ui/dialog";
 
 interface TermsAgreementProps {
@@ -33,6 +32,28 @@ export function TermsAgreement({
   const [checked, setChecked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Check if content is already smaller than container on mount/open
+  useEffect(() => {
+    if (isOpen && scrollContainerRef.current) {
+      const { scrollHeight, clientHeight } = scrollContainerRef.current;
+      if (scrollHeight <= clientHeight + 5) {
+        setHasScrolledToBottom(true);
+      }
+    } else if (!isOpen) {
+      setHasScrolledToBottom(false);
+      setChecked(false);
+    }
+  }, [isOpen]);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop <= clientHeight + 10) {
+      setHasScrolledToBottom(true);
+    }
+  };
 
   const handleAccept = async () => {
     setIsLoading(true);
@@ -80,7 +101,15 @@ export function TermsAgreement({
               </p>
             )}
           </div>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-3">
+            <a
+              href={`/api/projects/${projectId}/sow-pdf`}
+              download={`SOW_${projectId}.pdf`}
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 disabled:pointer-events-none disabled:opacity-50 bg-white border border-emerald-200 hover:bg-emerald-50 text-emerald-700 h-8 px-3 py-1 shadow-sm"
+            >
+              <Download className="w-3 h-3 mr-1.5" />
+              Download PDF
+            </a>
             <CheckCircle2 className="w-5 h-5 text-emerald-500 opacity-50" />
           </div>
         </div>
@@ -115,7 +144,7 @@ export function TermsAgreement({
           </DialogTrigger>
         </div>
 
-        <DialogContent className="light-theme max-w-3xl max-h-[90vh] flex flex-col p-0 overflow-hidden bg-slate-50 sm:rounded-xl">
+        <DialogContent className="light-theme max-w-[900px] sm:max-w-[900px] max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden bg-slate-50 sm:rounded-xl">
           <DialogHeader className="p-6 pb-5 border-b bg-white">
             <div className="flex items-center gap-3 mb-1">
               <ShieldCheck className="w-6 h-6 text-blue-600" />
@@ -126,46 +155,86 @@ export function TermsAgreement({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-50/50 relative">
+          <div
+            className="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-50/50 relative"
+            onScroll={handleScroll}
+            ref={scrollContainerRef}
+          >
             <div className="bg-white border rounded-lg shadow-sm min-h-[400px]">
-              <div className="p-6 md:p-8 prose prose-sm md:prose-base max-w-none text-slate-700 whitespace-pre-wrap leading-relaxed font-serif">
+              <div className="p-6 md:p-8 prose prose-sm md:prose-base max-w-none text-slate-700 whitespace-pre-wrap leading-relaxed">
                 {terms}
               </div>
             </div>
           </div>
 
-          <div className="p-6 pt-5 border-t bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10">
-            <label className="flex items-start gap-4 cursor-pointer select-none mb-6 p-4 rounded-lg bg-slate-50 border border-slate-200 transition-colors hover:bg-blue-50/50 hover:border-blue-200">
-              <input
-                type="checkbox"
-                checked={checked}
-                onChange={(e) => setChecked(e.target.checked)}
-                className="mt-1 w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer"
-              />
-              <span className="text-sm text-slate-700 leading-relaxed font-medium">
-                I acknowledge that I have read and agree to all the <strong className="text-slate-900">Terms & Conditions</strong> and{" "}
-                <strong className="text-slate-900">Statement of Work</strong> outlined in the document above. My digital signature below serves as a formal, legally binding acceptance of these terms.
-              </span>
-            </label>
+          <div className="border-t bg-white z-10">
+            {/* Agreement Checkbox */}
+            <div className={`px-6 pt-5 pb-4 transition-opacity duration-300 ${!hasScrolledToBottom ? "opacity-50" : "opacity-100"}`}>
+              {!hasScrolledToBottom && (
+                <div className="mb-3 text-xs font-semibold text-amber-600 bg-amber-50 px-3 py-2 rounded-md border border-amber-200 inline-block">
+                  Scroll to the bottom of the document to accept
+                </div>
+              )}
+              <label
+                className={`flex items-start gap-4 select-none p-4 rounded-xl border-2 transition-all duration-200 ${!hasScrolledToBottom
+                  ? "cursor-not-allowed bg-slate-50 border-slate-200 grayscale"
+                  : checked
+                    ? "cursor-pointer bg-blue-50/80 border-blue-300 shadow-sm shadow-blue-100"
+                    : "cursor-pointer bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+                  }`}
+              >
+                <div className={`mt-0.5 flex items-center justify-center w-5 h-5 rounded border-2 transition-all duration-200 shrink-0 ${checked
+                  ? "bg-blue-600 border-blue-600"
+                  : hasScrolledToBottom
+                    ? "bg-white border-slate-300"
+                    : "bg-slate-100 border-slate-200"
+                  }`}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => hasScrolledToBottom && setChecked(e.target.checked)}
+                    disabled={!hasScrolledToBottom}
+                    className="sr-only"
+                  />
+                  {checked && (
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+                <span className={`text-sm leading-relaxed ${hasScrolledToBottom ? "text-slate-700" : "text-slate-400"}`}>
+                  I acknowledge that I have read and agree to all the{" "}
+                  <strong className={hasScrolledToBottom ? "text-slate-900" : "text-slate-500"}>Terms & Conditions</strong> and{" "}
+                  <strong className={hasScrolledToBottom ? "text-slate-900" : "text-slate-500"}>Statement of Work</strong>{" "}
+                  outlined above. My digital signature below serves as a formal, legally binding acceptance of this agreement.
+                </span>
+              </label>
+            </div>
 
-            <DialogFooter className="flex-col sm:flex-row gap-3 sm:gap-0 mt-2">
-              <Button variant="outline" className="w-full sm:w-auto border-slate-300 font-medium" onClick={() => setIsOpen(false)} disabled={isLoading}>
-                Close & Review Later
+            {/* Action Buttons */}
+            <div className="px-6 pb-6 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3">
+              <Button
+                variant="ghost"
+                className="text-slate-500 hover:text-slate-700 hover:bg-slate-100 font-medium px-6"
+                onClick={() => setIsOpen(false)}
+                disabled={isLoading}
+              >
+                Cancel
               </Button>
               <Button
                 onClick={handleAccept}
                 disabled={!checked || isLoading}
-                size="default"
-                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white min-w-[200px] font-semibold tracking-wide transition-all shadow-md shadow-blue-600/20 disabled:shadow-none"
+                size="lg"
+                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white min-w-[220px] font-semibold tracking-wide transition-all duration-200 shadow-lg shadow-blue-600/25 disabled:shadow-none disabled:from-slate-300 disabled:to-slate-400 disabled:text-slate-500 rounded-xl h-12"
               >
                 {isLoading ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
                   <ShieldCheck className="w-4 h-4 mr-2" />
                 )}
-                {isLoading ? "Securely Signing..." : "Digitally Sign & Accept"}
+                {isLoading ? "Signing..." : "Sign Agreement"}
               </Button>
-            </DialogFooter>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

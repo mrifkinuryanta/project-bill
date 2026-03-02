@@ -28,10 +28,12 @@ model Project {
   items      ProjectItem[]
   invoices   Invoice[]
   deadline   DateTime?
-  terms      String?
+  terms         String?
   termsAcceptedAt DateTime?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  termsAcceptedIp String?
+  termsVersionId  String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   @@index([status])
   @@index([clientId])

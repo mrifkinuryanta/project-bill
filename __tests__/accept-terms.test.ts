@@ -15,11 +15,18 @@ jest.mock("next/server", () => ({
 class MockRequest {
   url: string;
   method: string;
-  constructor(url: string, init?: { method?: string }) {
+  headers: { get: (name: string) => string | null };
+
+  constructor(url: string, init?: { method?: string; headers?: Record<string, string> }) {
     this.url = url;
     this.method = init?.method || "GET";
+    const headerMap = new Map(Object.entries(init?.headers || {}));
+    this.headers = {
+      get: (name: string) => headerMap.get(name.toLowerCase()) || null,
+    };
   }
 }
+// Cast it as any to bypass strict Request typing in the test global
 global.Request = MockRequest as any;
 
 // Mock Prisma
@@ -46,7 +53,7 @@ describe("PATCH /api/projects/[id]/accept-terms", () => {
     );
     const params = Promise.resolve({ id: "1" });
 
-    const response = await PATCH(request, { params });
+    const response = await PATCH(request as any, { params });
     const data = await response.json();
 
     expect(response.status).toBe(404);
@@ -57,6 +64,7 @@ describe("PATCH /api/projects/[id]/accept-terms", () => {
     (prisma.project.findUnique as jest.Mock).mockResolvedValue({
       terms: null,
       termsAcceptedAt: null,
+      updatedAt: new Date("2026-03-01T00:00:00Z"),
     });
 
     const request = new MockRequest(
@@ -65,7 +73,7 @@ describe("PATCH /api/projects/[id]/accept-terms", () => {
     );
     const params = Promise.resolve({ id: "1" });
 
-    const response = await PATCH(request, { params });
+    const response = await PATCH(request as any, { params });
     const data = await response.json();
 
     expect(response.status).toBe(400);
@@ -76,6 +84,7 @@ describe("PATCH /api/projects/[id]/accept-terms", () => {
     (prisma.project.findUnique as jest.Mock).mockResolvedValue({
       terms: "Some terms",
       termsAcceptedAt: new Date(),
+      updatedAt: new Date("2026-03-01T00:00:00Z"),
     });
 
     const request = new MockRequest(
@@ -84,7 +93,7 @@ describe("PATCH /api/projects/[id]/accept-terms", () => {
     );
     const params = Promise.resolve({ id: "1" });
 
-    const response = await PATCH(request, { params });
+    const response = await PATCH(request as any, { params });
     const data = await response.json();
 
     expect(response.status).toBe(400);
@@ -97,6 +106,7 @@ describe("PATCH /api/projects/[id]/accept-terms", () => {
     (prisma.project.findUnique as jest.Mock).mockResolvedValue({
       terms: "Some terms",
       termsAcceptedAt: null,
+      updatedAt: new Date("2026-03-01T00:00:00Z"),
     });
 
     (prisma.project.update as jest.Mock).mockResolvedValue({
@@ -105,18 +115,25 @@ describe("PATCH /api/projects/[id]/accept-terms", () => {
 
     const request = new MockRequest(
       "http://localhost:3000/api/projects/1/accept-terms",
-      { method: "PATCH" },
+      {
+        method: "PATCH",
+        headers: { "x-forwarded-for": "192.168.1.100" }
+      },
     );
     const params = Promise.resolve({ id: "1" });
 
-    const response = await PATCH(request, { params });
+    const response = await PATCH(request as any, { params });
     const data = await response.json();
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
     expect(prisma.project.update).toHaveBeenCalledWith({
       where: { id: "1" },
-      data: { termsAcceptedAt: expect.any(Date) },
+      data: {
+        termsAcceptedAt: expect.any(Date),
+        termsAcceptedIp: "192.168.1.100",
+        termsVersionId: new Date("2026-03-01T00:00:00Z").toISOString(),
+      },
     });
   });
 });
