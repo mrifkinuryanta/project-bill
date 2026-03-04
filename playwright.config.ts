@@ -16,7 +16,7 @@ export default defineConfig({
     reporter: 'html',
     use: {
         actionTimeout: 0,
-        baseURL: 'http://localhost:3000',
+        baseURL: process.env.APP_URL || 'http://localhost:3000',
         trace: 'on-first-retry',
     },
     projects: [

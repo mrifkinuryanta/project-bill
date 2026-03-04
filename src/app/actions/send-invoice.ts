@@ -38,7 +38,7 @@ export async function sendInvoiceEmail(invoiceId: string) {
 
     // Resolve the BASE_URL from env or default to localhost
     const baseUrl =
-      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.APP_URL ||
       (process.env.VERCEL_URL
         ? `https://${process.env.VERCEL_URL}`
         : "http://localhost:3000");

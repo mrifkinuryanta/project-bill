@@ -19,7 +19,7 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
 
   try {
     const data = await resend.emails.send({
-      from: "Project Bill <noreply@projectbill.mrndev.me>",
+      from: process.env.RESEND_FROM_EMAIL || "Project Bill <noreply@projectbill.mrndev.me>",
       to: [params.to],
       subject: `Invoice for ${params.projectTitle} - Action Required`,
       html: `
@@ -127,7 +127,7 @@ export async function sendReminderEmail(params: SendReminderEmailParams) {
 
   try {
     const data = await resend.emails.send({
-      from: "Project Bill <noreply@projectbill.mrndev.me>",
+      from: process.env.RESEND_FROM_EMAIL || "Project Bill <noreply@projectbill.mrndev.me>",
       to: [params.to],
       subject,
       html: `

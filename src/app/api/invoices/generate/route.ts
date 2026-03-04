@@ -95,9 +95,10 @@ export async function POST(request: Request) {
       },
     });
 
-    const host = request.headers.get("host") || "localhost:3000";
-    const protocol = host.includes("localhost") ? "http" : "https";
-    const invoiceDetailUrl = `${protocol}://${host}/invoices/${newInvoice.id}`;
+    const fallbackHost = request.headers.get("host") || "localhost:3000";
+    const fallbackProtocol = fallbackHost.includes("localhost") ? "http" : "https";
+    const baseUrl = process.env.APP_URL || `${fallbackProtocol}://${fallbackHost}`;
+    const invoiceDetailUrl = `${baseUrl}/invoices/${newInvoice.id}`;
 
     // Soft-fail: Try communicating with Resend, but don't fail the whole block if it errors.
     let emailSuccess = false;
