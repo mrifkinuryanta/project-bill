@@ -43,11 +43,7 @@ export function ConfirmDialog({
           <AlertDialogCancel>{cancelLabel}</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
-            className={
-              variant === "destructive"
-                ? "bg-destructive text-white hover:bg-destructive/90"
-                : ""
-            }
+            variant={variant}
           >
             {confirmLabel}
           </AlertDialogAction>
