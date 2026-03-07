@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -36,6 +37,7 @@ const settingsSchema = z.object({
 });
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -81,6 +83,7 @@ export default function SettingsPage() {
       });
       if (!res.ok) throw new Error("Failed to update settings");
       toast.success("Settings updated successfully!");
+      router.refresh();
     } catch (error) {
       console.error(error);
       toast.error("Failed to save settings.");

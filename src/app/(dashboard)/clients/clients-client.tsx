@@ -148,69 +148,71 @@ export function ClientsClient({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <Input
           placeholder="Search clients..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="max-w-sm"
         />
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => handleOpenDialog()}>
-              <Plus className="mr-2 h-4 w-4" /> Add Client
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {editingId ? "Edit Client" : "Add Client"}
-              </DialogTitle>
-              <DialogDescription>
-                {editingId
-                  ? "Make changes to your client here."
-                  : "Add a new client to your roster."}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  placeholder="Acme Corp"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="contact@acme.com"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone / WhatsApp</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="081234567890"
-                />
-              </div>
-              <DialogFooter>
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading ? "Saving..." : "Save changes"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => handleOpenDialog()}>
+                <Plus className="h-4 w-4" /> Add Client
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {editingId ? "Edit Client" : "Add Client"}
+                </DialogTitle>
+                <DialogDescription>
+                  {editingId
+                    ? "Make changes to your client here."
+                    : "Add a new client to your roster."}
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Name</Label>
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                    placeholder="Acme Corp"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="contact@acme.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone / WhatsApp</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="081234567890"
+                  />
+                </div>
+                <DialogFooter>
+                  <Button type="submit" disabled={isLoading}>
+                    {isLoading ? "Saving..." : "Save changes"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Mobile View: Cards */}

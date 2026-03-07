@@ -315,17 +315,16 @@ export function ProjectsClient({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <Input
           placeholder="Search projects or clients..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="max-w-sm"
+          className="w-full sm:max-w-sm"
         />
-
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
           <Button onClick={() => handleOpenDialog()}>
-            <Plus className="mr-2 h-4 w-4" /> Add Project
+            <Plus className="h-4 w-4" /> Add Project
           </Button>
 
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
