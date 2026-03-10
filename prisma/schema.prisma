@@ -39,6 +39,7 @@ model Project {
   taxRate                Decimal?      @db.Decimal(19, 4)
   createdAt              DateTime      @default(now())
   updatedAt              DateTime      @updatedAt
+  recurringInvoices      RecurringInvoice[]
 
   @@index([status])
   @@index([clientId])
@@ -61,7 +62,8 @@ model Invoice {
   invoiceNumber  String    @unique @default(uuid()) // E.g., INV-2026-0001
   projectId      String
   project        Project   @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  type           String // dp, full_payment
+  type           String // dp, full_payment, recurring
+  notes          String?   @db.Text
   amount         Decimal   @db.Decimal(19, 4)
   status         String    @default("unpaid") // unpaid, paid
   dueDate        DateTime?
@@ -118,4 +120,24 @@ model AuditLog {
 
   @@index([userId])
   @@index([createdAt])
+}
+
+model RecurringInvoice {
+  id            String    @id @default(uuid())
+  projectId     String
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title         String    // Title or name of the retainer
+  amount        Decimal   @db.Decimal(19, 4)
+  frequency     String    @default("monthly") // monthly, weekly, yearly
+  dayOfMonth    Int       @default(1)
+  startDate     DateTime
+  endDate       DateTime?
+  nextRunAt     DateTime
+  isActive      Boolean   @default(true)
+  description   String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([isActive, nextRunAt])
+  @@index([projectId])
 }

@@ -43,6 +43,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
+import { CostEstimator } from "@/components/cost-estimator";
 
 type Client = { id: string; name: string };
 
@@ -522,7 +523,9 @@ export function ProjectsClient({
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="totalPrice">Total Price</Label>
+                    <div className="flex items-center justify-between mt-2 mb-1">
+                      <Label htmlFor="totalPrice">Total Price</Label>
+                    </div>
                     <NumericFormat
                       id="totalPrice"
                       value={
@@ -588,12 +591,59 @@ export function ProjectsClient({
                 </div>
 
                 <div className="space-y-3 pt-2 border-t mt-4 text-sm">
-                  <Label>
-                    Project Scope / Items {editingId ? "" : "(Optional)"}
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Adding items will automatically calculate the Total Price.
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <div className="mr-2">
+                      <Label>
+                        Project Scope / Items {editingId ? "" : "(Optional)"}
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Adding items will automatically calculate the Total Price.
+                      </p>
+                    </div>
+                    {!hasInvoices && !isSowSigned && (
+                      <CostEstimator currency={currency} onApply={async (generatedItems) => {
+                        if (editingId) {
+                          setIsLoading(true);
+                          try {
+                            let updatedItems = [...items];
+                            let currentTotal = Number(totalPrice);
+                            for (const gItem of generatedItems) {
+                              const res = await fetch(`/api/projects/${editingId}/items`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  description: gItem.description,
+                                  price: gItem.price,
+                                  quantity: gItem.quantity,
+                                  rate: gItem.rate,
+                                }),
+                              });
+                              if (res.ok) {
+                                const data = await res.json();
+                                updatedItems.push({
+                                  id: data.item.id,
+                                  description: data.item.description,
+                                  price: String(data.item.price),
+                                  quantity: data.item.quantity ? String(data.item.quantity) : null,
+                                  rate: data.item.rate ? String(data.item.rate) : null,
+                                });
+                                currentTotal = data.projectTotal;
+                              }
+                            }
+                            setItems(updatedItems);
+                            setTotalPrice(String(currentTotal));
+                            toast.success("Estimated items created successfully");
+                          } catch (err) {
+                            toast.error("Failed to save estimated items");
+                          } finally {
+                            setIsLoading(false);
+                          }
+                        } else {
+                          setItems([...items, ...generatedItems]);
+                        }
+                      }} />
+                    )}
+                  </div>
 
                   {items.length > 0 && (
                     <div className="flex flex-col gap-2 mb-3">

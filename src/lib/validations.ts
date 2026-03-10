@@ -42,3 +42,15 @@ export const clientSchema = z.object({
   name: z.string().min(2, "Client name must be at least 2 characters"),
   email: z.string().email("Invalid email").optional().nullable(),
 });
+
+export const recurringInvoiceSchema = z.object({
+  projectId: z.string().min(1, "Project ID is required"),
+  title: z.string().min(3, "Title must be at least 3 characters"),
+  amount: z.coerce.number().positive("Amount must be positive"),
+  frequency: z.enum(["monthly", "weekly", "yearly"]).default("monthly"),
+  dayOfMonth: z.coerce.number().min(1).max(28).default(1),
+  startDate: z.string(),
+  endDate: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
+  isActive: z.boolean().default(true),
+});

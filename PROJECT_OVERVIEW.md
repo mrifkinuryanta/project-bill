@@ -190,18 +190,33 @@ The full MVP through V1.5 features have been successfully implemented:
     - **Touch-Friendly Actions:** The delete button is always visible on mobile (no hover dependency), and input fields are taller (`h-9`) with better touch targets.
     - **Scrollable Content:** Added `max-h-[60vh] overflow-y-auto` to the items container to prevent the dialog from overflowing on screens with many scope items.
 
-## Upcoming: Sprint 14 (V2 Feature Expansion)
-The next development cycle will focus on expanding core functionality to support a wider array of business models and improving overall client journey Quality of Life. Potential candidates for Sprint 14:
+## Current State: V1.6 Complete
+
+30. **Recurring Invoices / Retainer Billing (Sprint 14):**
+    - **Database Schema:** New `RecurringInvoice` model linked to `Project` with fields for `title`, `amount`, `frequency` (monthly/weekly/yearly), `dayOfMonth`, `startDate`, `endDate`, `nextRunAt`, and `isActive` toggle. Added `notes` (Text) field to `Invoice` model for recurring descriptions.
+    - **CRUD API:** Full REST endpoints at `/api/recurring-invoices` (GET, POST) and `/api/recurring-invoices/[id]` (PUT, DELETE with soft-deactivate). Input validation via Zod (`recurringInvoiceSchema`).
+    - **Cron Job Engine:** Secure daily endpoint `/api/cron/recurring-invoices` protected by `CRON_SECRET` Bearer token. Logic: query due templates → generate `Invoice` (type: `"recurring"`) → send email → advance `nextRunAt` → auto-pause if `endDate` reached. Handles missed cycles by looping until `nextRunAt > today`.
+    - **Dedicated Email Template:** `RecurringInvoiceEmail.tsx` (separate from `InvoiceEmail.tsx`) with tailored copy: "Ini adalah pemberitahuan bahwa tagihan rutin Anda..." (ID) / "This is a notification that your recurring invoice..." (EN). Includes a **Type: Tagihan Rutin** detail row and renders the recurring template's `description` as italic text in the email body.
+    - **Invoice Detail Display:** Invoices with `type === "recurring"` now render a **single clean line item** showing the recurring description and amount (via `notes` field), instead of confusingly listing all project scope items. Badge displays `RECURRING`.
+    - **Dashboard UI:** Full management page at `/recurring-invoices` with table listing, create/edit modal dialog, status toggle (Active/Paused), and delete confirmation. Sidebar navigation added with `CalendarClock` icon.
+
+31. **Cost Estimator — Man-hours Calculator (Sprint 14):**
+    - **Formula:** `Total = Σ(Hours per task × Rate/Hour) × Risk Buffer`. Risk Buffer adjustable from 1.0x to 2.0x via Slider (default 1.5x).
+    - **Dialog Popup UI:** Mobile-first responsive `Dialog` component (not inline collapsible). Trigger button placed next to "Project Scope / Items" label.
+    - **Scope Integration:** Clicking "Apply Value" generates structured line items (description, quantity=hours, rate=adjusted rate, price) from the estimation and injects them directly into the project's items list. For existing projects, items are created via API and the total price is updated automatically.
+    - **Client-Side Only:** No database storage for man-hours data — purely a calculation helper. Generated items persist as normal `ProjectItem` records.
+
+32. **Invoice & Email Localization Fixes (Sprint 14):**
+    - **PayButton Localization:** The "Online Payment Available" section on the public invoice view now fully supports Indonesian: "Pembayaran Online Tersedia" / "Bayar [amount] Sekarang".
+    - **DP Deduction Row Fix:** The "Dikurangi: Uang Muka" deduction row no longer appears when `dpAmount` is `0`, preventing phantom `-Rp 0` entries on invoices.
+
+## Upcoming: Sprint 15 (V2 Feature Expansion)
+The next development cycle will focus on expanding core functionality. Potential candidates:
 
 1. **Client Portal (Multitenant Dashboards)** — A dedicated login area or permanent token link for clients to view all their past invoices, project status, and download SOWs from a single unified screen.
-2. **Recurring Invoices (Retainers)** — Auto-generate and send monthly invoices for retainer-based projects via scheduled Cron jobs.
-3. **File Attachments (S3/R2 Integration)** — Enabling a "Deliverables" section on the Project board where agencies can upload result files (ZIPs, Videos) that unlock for the client only after payment is complete.
-4. **Partial Payments & Milestones** — Expanding beyond DP & Balance to support multi-stage payment terms (e.g., 30% Design, 40% Develop, 30% Launch).
-5. **Time-Tracking & Hourly Billing** — An in-app stopwatch linked to projects that automatically compiles hours worked into billable invoice line-items at the end of the month.
-
-## Future Development Plan (V2 & Beyond)
-
-All planned features for V1.5 have been completed.
+2. **File Attachments (S3/R2 Integration)** — Enabling a "Deliverables" section on the Project board where agencies can upload result files (ZIPs, Videos) that unlock for the client only after payment is complete.
+3. **Partial Payments & Milestones** — Expanding beyond DP & Balance to support multi-stage payment terms (e.g., 30% Design, 40% Develop, 30% Launch).
+4. **Time-Tracking & Hourly Billing** — An in-app stopwatch linked to projects that automatically compiles hours worked into billable invoice line-items at the end of the month.
 - **Multi-Currency Payment Gateway** — Currently disabled. If international clients are targeted, re-enable USD in `projects-client.tsx` and integrate Stripe Checkout for USD invoices alongside Mayar (IDR).
 ## Notes for the Next Agent
 - All layout components and global CSS are already set up.
@@ -220,3 +235,7 @@ All planned features for V1.5 have been completed.
 - Use `APP_URL` (not `NEXT_PUBLIC_APP_URL`) for server-side base URL resolution.
 - All delete confirmation dialogs use the reusable `ConfirmDialog` component (`src/components/confirm-dialog.tsx`).
 - The sidebar uses `collapsible="icon"` mode — it shrinks to icons when collapsed.
+- **Recurring Invoices:** The cron endpoint `/api/cron/recurring-invoices` requires `CRON_SECRET` env variable. Deploy with an external scheduler (Vercel Cron, cron-job.org) hitting this endpoint daily with `Authorization: Bearer <CRON_SECRET>`.
+- **Recurring Invoice Type:** Invoices generated by the cron use `type: "recurring"` and store the template description in the `notes` field. The public invoice view renders a single line item for this type instead of project scope items.
+- **Cost Estimator:** The `CostEstimator` component (`src/components/cost-estimator.tsx`) is a client-side-only man-hours calculator. It generates `ProjectItem` records but does not store estimation data in the DB.
+- **Email Templates:** Recurring invoices use `RecurringInvoiceEmail.tsx` (separate from `InvoiceEmail.tsx`). The `sendInvoiceEmail()` action accepts `isRecurring` and `recurringDescription` optional params.

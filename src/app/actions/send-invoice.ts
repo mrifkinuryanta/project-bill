@@ -2,11 +2,12 @@
 
 import { Resend } from "resend";
 import { InvoiceEmail } from "@/emails/InvoiceEmail";
+import { RecurringInvoiceEmail } from "@/emails/RecurringInvoiceEmail";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/crypto";
 import type { CompanyInfo } from "@/emails/EmailLayout";
 
-export async function sendInvoiceEmail(invoiceId: string) {
+export async function sendInvoiceEmail(invoiceId: string, isRecurring: boolean = false, recurringDescription?: string | null) {
   try {
     // Fetch invoice details
     const invoice = await prisma.invoice.findUnique({
@@ -82,21 +83,32 @@ export async function sendInvoiceEmail(invoiceId: string) {
       ? `Invoice ${invoice.invoiceNumber} untuk ${invoice.project.title} - Diperlukan Tindakan`
       : `Invoice ${invoice.invoiceNumber} for ${invoice.project.title} - Action Required`;
 
+    // Choose template
+    const TemplateComponent = isRecurring ? RecurringInvoiceEmail : InvoiceEmail;
+
+    // Build template props
+    const templateProps: Record<string, unknown> = {
+      clientName: invoice.project.client.name,
+      invoiceId: invoice.invoiceNumber,
+      projectName: invoice.project.title,
+      amount: amountStr,
+      dueDate: invoice.dueDate,
+      invoiceLink: invoiceLink,
+      company,
+      lang: invoice.project.language as "id" | "en",
+    };
+
+    // Add description for recurring invoices
+    if (isRecurring && recurringDescription) {
+      templateProps.description = recurringDescription;
+    }
+
     // Send the email
     const { data, error } = await resend.emails.send({
       from: senderFrom,
       to: [invoice.project.client.email],
       subject,
-      react: InvoiceEmail({
-        clientName: invoice.project.client.name,
-        invoiceId: invoice.invoiceNumber,
-        projectName: invoice.project.title,
-        amount: amountStr,
-        dueDate: invoice.dueDate,
-        invoiceLink: invoiceLink,
-        company,
-        lang: invoice.project.language as "id" | "en",
-      }) as React.ReactElement,
+      react: TemplateComponent(templateProps as any) as React.ReactElement,
     });
 
     if (error) {

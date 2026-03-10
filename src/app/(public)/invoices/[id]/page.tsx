@@ -255,7 +255,38 @@ export default async function InvoiceViewPage(props: {
               </tr>
             </thead>
             <tbody>
-              {invoice.type === "dp" ||
+              {invoice.type === "recurring" ? (
+                <tr className="border-b border-slate-200">
+                  <td className="py-4 px-2">
+                    <p className="font-medium text-slate-800">
+                      {invoice.notes || t.projectServices}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {lang === "id" ? "Tagihan Rutin" : "Recurring Invoice"}
+                    </p>
+                  </td>
+                  {hasQtyRate && (
+                    <>
+                      <td className="py-4 px-2 text-right">-</td>
+                      <td className="py-4 px-2 text-right">-</td>
+                    </>
+                  )}
+                  <td className="py-4 px-2 text-center">
+                    <Badge
+                      variant="outline"
+                      className="font-mono text-slate-600 bg-slate-50"
+                    >
+                      RECURRING
+                    </Badge>
+                  </td>
+                  <td className="py-4 px-2 text-right font-medium text-slate-800">
+                    {formatCurrency(
+                      invoice.amount.toString(),
+                      invoice.project.currency || "IDR",
+                    )}
+                  </td>
+                </tr>
+              ) : invoice.type === "dp" ||
                 !invoice.project.items ||
                 invoice.project.items.length === 0 ? (
                 <tr className="border-b border-slate-200">
@@ -326,6 +357,7 @@ export default async function InvoiceViewPage(props: {
                     </tr>
                   ))}
                   {invoice.project.dpAmount &&
+                    Number(invoice.project.dpAmount) > 0 &&
                     Number(invoice.project.totalPrice) >
                     Number(invoice.amount) && (
                       <tr className="border-b border-slate-200">
@@ -414,12 +446,14 @@ export default async function InvoiceViewPage(props: {
                 <PayButton
                   invoiceId={invoice.id}
                   amountStr={formatCurrency(grandTotal, "IDR")}
+                  lang={lang as "id" | "en"}
                 />
               </TermsAgreement>
             ) : (
               <PayButton
                 invoiceId={invoice.id}
                 amountStr={formatCurrency(grandTotal, "IDR")}
+                lang={lang as "id" | "en"}
               />
             ))}
           <div className="text-center mt-8 text-xs text-slate-400 border-t pt-4">

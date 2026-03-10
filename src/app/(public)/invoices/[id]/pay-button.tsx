@@ -6,14 +6,32 @@ import { Loader2, CreditCard } from "lucide-react";
 
 import { toast } from "sonner";
 
+const TRANSLATIONS = {
+  en: {
+    title: "Online Payment Available",
+    description: "You can now pay this invoice securely online via Credit Card, QRIS, Virtual Account, or E-Wallet.",
+    payNow: "Pay",
+    now: "Now",
+  },
+  id: {
+    title: "Pembayaran Online Tersedia",
+    description: "Anda dapat membayar invoice ini secara online melalui Kartu Kredit, QRIS, Virtual Account, atau E-Wallet.",
+    payNow: "Bayar",
+    now: "Sekarang",
+  },
+};
+
 export function PayButton({
   invoiceId,
   amountStr,
+  lang = "id",
 }: {
   invoiceId: string;
   amountStr: string;
+  lang?: "id" | "en";
 }) {
   const [isLoading, setIsLoading] = useState(false);
+  const t = TRANSLATIONS[lang];
 
   const handlePayClick = async () => {
     setIsLoading(true);
@@ -44,11 +62,10 @@ export function PayButton({
   return (
     <div className="bg-slate-50 p-6 border-l-4 border-blue-600 mb-6 print:hidden">
       <h3 className="font-bold text-slate-800 uppercase tracking-wider text-sm mb-2">
-        Online Payment Available
+        {t.title}
       </h3>
       <p className="text-sm text-slate-600 mb-4">
-        You can now pay this invoice securely online via Credit Card, QRIS,
-        Virtual Account, or E-Wallet.
+        {t.description}
       </p>
       <Button
         onClick={handlePayClick}
@@ -60,7 +77,7 @@ export function PayButton({
         ) : (
           <CreditCard className="w-4 h-4 mr-2" />
         )}
-        Pay {amountStr} Now
+        {t.payNow} {amountStr} {t.now}
       </Button>
     </div>
   );

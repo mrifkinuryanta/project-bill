@@ -17,6 +17,7 @@ import {
   ChevronsUpDown,
   GalleryVerticalEnd,
   Pencil,
+  CalendarClock,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useTheme } from "next-themes";
@@ -107,6 +108,11 @@ const navGroups: NavGroup[] = [
         title: "Invoices",
         url: "/invoices",
         icon: FileText,
+      },
+      {
+        title: "Recurring",
+        url: "/recurring-invoices",
+        icon: CalendarClock,
       },
     ],
   },
