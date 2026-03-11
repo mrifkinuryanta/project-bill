@@ -21,7 +21,6 @@ import {
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useTheme } from "next-themes";
-import pkg from "../../package.json";
 
 import {
   Sidebar,
@@ -418,7 +417,7 @@ export function AppSidebar({ user, company }: AppSidebarProps) {
           </SidebarMenuItem>
           <SidebarMenuItem className="px-2 pt-2 mt-2">
             <div className="text-center text-xs text-sidebar-foreground/40 font-medium">
-              Version v{pkg.version}
+              Version v{process.env.NEXT_PUBLIC_APP_VERSION}
             </div>
           </SidebarMenuItem>
         </SidebarMenu>
