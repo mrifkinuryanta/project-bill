@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -98,12 +99,27 @@ export default function SettingsPage() {
     }
   }
 
-  if (isLoading) {
+  const { data: session, status } = useSession();
+
+  if (isLoading || status === "loading") {
     return (
       <div className="flex justify-center p-8">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
+  }
+
+  // @ts-ignore - Temporary bypass to ensure no type mismatch in session rendering
+  if (session?.user?.role !== "admin") {
+     return (
+        <div className="flex flex-col items-center justify-center p-8 gap-4 mt-12">
+            <h2 className="text-2xl font-bold tracking-tight text-red-500">Access Denied</h2>
+            <p className="text-muted-foreground text-center max-w-md">
+               You do not have the required administrative permissions to view or modify application settings.
+            </p>
+            <Button variant="outline" onClick={() => router.push('/')}>Return to Dashboard</Button>
+        </div>
+     )
   }
 
   return (

@@ -41,6 +41,7 @@ import { toast } from "sonner";
 import { NumericFormat } from "react-number-format";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import ReactMarkdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
 import { CostEstimator } from "@/components/cost-estimator";
@@ -86,6 +87,8 @@ export function ProjectsClient({
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const uniqueStatuses = Array.from(new Set(projects.map((p) => p.status)));
 
   // Project Form State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -356,20 +359,38 @@ export function ProjectsClient({
   };
 
   const filteredProjects = projects.filter(
-    (project) =>
-      project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.client.name.toLowerCase().includes(searchQuery.toLowerCase()),
+    (project) => {
+      const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            project.client.name.toLowerCase().includes(searchQuery.toLowerCase());
+      if (statusFilter !== "all" && project.status !== statusFilter) return false;
+      return matchesSearch;
+    }
   );
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <Input
-          placeholder="Search projects or clients..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full sm:max-w-sm"
-        />
+        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+          <Input
+            placeholder="Search projects or clients..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full sm:w-[250px]"
+          />
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              {uniqueStatuses.map((status) => (
+                <SelectItem key={status} value={status}>
+                  {status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
           <Button onClick={() => handleOpenDialog()}>
             <Plus className="h-4 w-4" /> Add Project
@@ -948,7 +969,7 @@ export function ProjectsClient({
                   <div className="flex-1 overflow-y-auto p-6 lg:px-12 bg-slate-50 dark:bg-zinc-950">
                     <div className="prose prose-sm md:prose-base prose-slate dark:prose-invert max-w-3xl mx-auto prose-headings:font-semibold prose-a:text-indigo-600 dark:prose-a:text-indigo-400 text-slate-700 dark:text-zinc-300 leading-relaxed text-justify">
                       {terms ? (
-                        <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                        <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} rehypePlugins={[rehypeSanitize]}>
                           {terms}
                         </ReactMarkdown>
                       ) : (

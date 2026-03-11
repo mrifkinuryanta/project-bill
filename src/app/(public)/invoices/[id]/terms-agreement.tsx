@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, ShieldCheck, FileCheck2, CheckCircle2, Download } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
 import { format } from "date-fns";
@@ -236,7 +237,7 @@ export function TermsAgreement({
           >
             <div className="bg-white border rounded-lg shadow-sm min-h-[400px]">
               <div className="p-6 md:p-8 prose prose-sm md:prose-base max-w-none text-slate-700 leading-relaxed text-justify">
-                <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} rehypePlugins={[rehypeSanitize]}>
                   {terms}
                 </ReactMarkdown>
               </div>

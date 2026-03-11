@@ -18,5 +18,27 @@ services:
       retries: 5
       start_period: 30s
 
+  # Optional: Automatic daily database backups
+  # Remove this service if you use a managed DB (Supabase, Neon, etc.)
+  db-backup:
+    image: prodrigestivill/postgres-backup-local:18
+    container_name: projectbill_db_backup
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_USER: ${POSTGRES_USER:-projectbill_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-projectbill_password}
+      POSTGRES_DB: ${POSTGRES_DB:-projectbill_db}
+      SCHEDULE: "@daily"        # Run backup every day at midnight
+      BACKUP_KEEP_DAYS: 7       # Keep backups for 7 days
+      BACKUP_KEEP_WEEKS: 4      # Keep weekly backups for 4 weeks
+      BACKUP_KEEP_MONTHS: 6     # Keep monthly backups for 6 months
+      HEALTHCHECK_PORT: 8080
+    volumes:
+      - ./backups:/backups
+
 volumes:
   projectbill_pgdata:

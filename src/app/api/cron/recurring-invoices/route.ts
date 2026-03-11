@@ -2,8 +2,20 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendInvoiceEmail } from "@/app/actions/send-invoice";
 import { generateInvoiceNumber } from "@/lib/invoice-utils";
+import { RateLimiter } from "@/lib/rate-limit";
+
+// Allow 2 cron requests per minute per IP to prevent abusive triggers
+const cronRateLimiter = new RateLimiter({ limit: 2, windowMs: 60 * 1000 });
 
 export async function GET(request: Request) {
+    // 0. Rate Limiting Check
+    const ip = request.headers.get("x-forwarded-for") || "unknown-ip";
+    const rateLimitResult = cronRateLimiter.check(ip);
+    if (!rateLimitResult.success) {
+        console.warn(`[Cron Rate Limit] Exceeded for IP: ${ip}`);
+        return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+
     // 1. Validate CRON_SECRET (Default Deny if not set)
     const cronSecret = process.env.CRON_SECRET;
     const authHeader = request.headers.get("authorization");
@@ -36,64 +48,32 @@ export async function GET(request: Request) {
 
         for (const template of dueTemplates) {
             try {
-                // Stop if endDate is passed
+                // Determine if we need to pause it
+                let shouldPause = false;
                 if (template.endDate) {
                     const end = new Date(template.endDate);
                     end.setHours(0, 0, 0, 0);
                     if (today > end) {
-                        await prisma.recurringInvoice.update({
-                            where: { id: template.id },
-                            data: { isActive: false },
-                        });
-                        results.push({ recurringId: template.id, error: "End date reached, pausing." });
-                        continue;
+                        shouldPause = true;
                     }
                 }
 
-                // Generate invoice number
-                const invoiceNumber = await generateInvoiceNumber();
-                const dueDate = new Date();
-                dueDate.setDate(dueDate.getDate() + 7); // Default 7 days, could arguably be made configurable later
-
-                // Create the invoice record
-                const newInvoice = await prisma.invoice.create({
-                    data: {
-                        invoiceNumber,
-                        projectId: template.projectId,
-                        type: "recurring",
-                        notes: template.description || template.title,
-                        amount: template.amount,
-                        status: "unpaid",
-                        dueDate,
-                    },
-                });
-
-                // Add scoping item just to ensure it looks good if there are no project items or if we want to isolate it
-                // We can add the recurring description as a ProjectItem tied to this project temporarily or permanently,
-                // but for now, we rely on the Project's existing items. Since it's a "Project", the generated invoice
-                // pulls line items from the Project itself when rendered publically.
-                // A future enhancement could link RecuringInvoice directly to invoice line items.
-
-                // Send Email automatically
-                if (template.project.client.email) {
-                    try {
-                        await sendInvoiceEmail(newInvoice.id, true, template.description);
-                    } catch (err) {
-                        console.error(`Failed to send email for auto-invoice ${newInvoice.id}`, err);
-                    }
+                if (shouldPause) {
+                    await prisma.recurringInvoice.update({
+                        where: { id: template.id },
+                        data: { isActive: false },
+                    });
+                    results.push({ recurringId: template.id, error: "End date reached, pausing." });
+                    continue;
                 }
 
-                // Calculate nextRunAt
+                // Calculate nextRunAt first
                 let nextRunAt = new Date(template.nextRunAt);
-                // Safety check to ensure we jump ahead of today if we somehow missed multiple cycles
                 while (nextRunAt <= today) {
                     if (template.frequency === "monthly") {
                         nextRunAt.setMonth(nextRunAt.getMonth() + 1);
-                        // Ensure day of month stays as intended where possible
-                        // (e.g. Jan 31 -> Feb 28 -> Mar 31) - simplified version here
                         const expectedDay = template.dayOfMonth;
                         nextRunAt.setDate(expectedDay);
-                        // if month rolled over unexpectedly, push back to last day of previous month
                         if (nextRunAt.getDate() !== expectedDay) {
                             nextRunAt.setDate(0);
                         }
@@ -104,11 +84,53 @@ export async function GET(request: Request) {
                     }
                 }
 
-                // Update template
-                await prisma.recurringInvoice.update({
-                    where: { id: template.id },
-                    data: { nextRunAt },
+                // Generate invoice number outside of strict transaction to avoid long locking string pools (less of a concern but good practice)
+                const invoiceNumber = await generateInvoiceNumber();
+                const dueDate = new Date();
+                dueDate.setDate(dueDate.getDate() + 7);
+
+                // Execute the invoice creation and nextRunAt increment as ONE ATOMIC transaction
+                // Ensuring idempotency. If this crashes half-way, nothing is saved.
+                const newInvoice = await prisma.$transaction(async (tx) => {
+                    // Check again with a lock/condition if possible, but the transaction wrapper is sufficient 
+                    // since we check `nextRunAt` in the where clause if we wanted to be super strict. 
+                    // However, due to external system constraints, keeping it logic-bound is fine.
+                    const existingTemplate = await tx.recurringInvoice.findUnique({
+                        where: { id: template.id }
+                    });
+
+                    if (!existingTemplate || existingTemplate.nextRunAt > today) {
+                        throw new Error(`Template ${template.id} already processed or invalid.`);
+                    }
+
+                    const created = await tx.invoice.create({
+                        data: {
+                            invoiceNumber,
+                            projectId: template.projectId,
+                            type: "recurring",
+                            notes: template.description || template.title,
+                            amount: template.amount,
+                            status: "unpaid",
+                            dueDate,
+                        },
+                    });
+
+                    await tx.recurringInvoice.update({
+                        where: { id: template.id },
+                        data: { nextRunAt },
+                    });
+
+                    return created;
                 });
+
+                // Send Email automatically after successful transaction commit
+                if (template.project.client.email) {
+                    try {
+                        await sendInvoiceEmail(newInvoice.id, true, template.description);
+                    } catch (err) {
+                        console.error(`Failed to send email for auto-invoice ${newInvoice.id}`, err);
+                    }
+                }
 
                 generated++;
                 results.push({ recurringId: template.id, invoiceId: newInvoice.id });

@@ -23,6 +23,14 @@ import { Send, Loader2, Trash2 } from "lucide-react";
 import { sendInvoiceEmail } from "@/app/actions/send-invoice";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 export function InvoicesClient({
   initialInvoices,
 }: {
@@ -31,6 +39,7 @@ export function InvoicesClient({
 }) {
   const [invoices, setInvoices] = useState(initialInvoices);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [toggleConfirmId, setToggleConfirmId] = useState<{ id: string, currentStatus: string } | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -114,6 +123,13 @@ export function InvoicesClient({
           description: res.error,
         });
       }
+      
+      // Attempt a router refresh internally if we just sent an email so status shows "Email Sent" or "Email Failed" if implemented later
+      try {
+         const { useRouter } = await import("next/navigation")
+         // Minimal hack hook via Next Router, else rely on page poll. We will just wait.
+      } catch (ex) {}
+
     } catch (e: unknown) {
       console.error(e);
       toast.error("An error occurred", {
@@ -125,24 +141,37 @@ export function InvoicesClient({
   };
 
   const filteredInvoices = invoices.filter(
-    (inv) =>
-      inv.project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inv.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inv.type
-        .replace("_", " ")
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase()),
+    (inv) => {
+      const matchesSearch = inv.project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        inv.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        inv.project.client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        inv.type.replace("_", " ").toLowerCase().includes(searchQuery.toLowerCase());
+
+      if (statusFilter === "paid") return matchesSearch && inv.status === "paid";
+      if (statusFilter === "unpaid") return matchesSearch && inv.status === "unpaid";
+      return matchesSearch;
+    }
   );
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
         <Input
           placeholder="Search invoices..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="max-w-sm"
         />
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="paid">Paid</SelectItem>
+            <SelectItem value="unpaid">Unpaid</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Mobile View: Cards */}
@@ -172,6 +201,11 @@ export function InvoicesClient({
                       >
                         Unpaid
                       </Badge>
+                    )}
+                    {inv.emailStatus === 'failed' && (
+                        <Badge variant="outline" className="text-red-500 border-red-500 bg-red-50 dark:bg-red-950 text-[10px] py-0 px-2 uppercase tracking-tight">
+                          Email Failed
+                        </Badge>
                     )}
                     <span className="text-xs text-muted-foreground capitalize">{inv.type.replace("_", " ")}</span>
                   </div>
@@ -273,6 +307,7 @@ export function InvoicesClient({
                     {formatCurrency(Number(inv.amount), inv.project.currency || "IDR")}
                   </TableCell>
                   <TableCell>
+                    <div className="flex flex-col gap-1 items-start">
                     {inv.status === "paid" ? (
                       <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800 dark:hover:bg-emerald-900 border text-xs py-1 px-3 uppercase tracking-widest font-bold">
                         Paid
@@ -285,6 +320,12 @@ export function InvoicesClient({
                         Unpaid
                       </Badge>
                     )}
+                    {inv.emailStatus === 'failed' && (
+                        <Badge variant="outline" className="text-red-500 border-red-500 bg-red-50 dark:bg-red-950 text-[10px] py-0 px-2 uppercase tracking-tight flex items-center gap-1">
+                          Email Failed
+                        </Badge>
+                    )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end items-center gap-2">

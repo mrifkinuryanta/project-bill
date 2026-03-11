@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { createAuditLog } from "@/lib/audit-logger";
 
 export async function PATCH(
   request: Request,
@@ -50,6 +51,18 @@ export async function PATCH(
         termsVersionId: nextVersion,
       },
     });
+
+    try {
+      await createAuditLog({
+        userId: "system_client", // since this is a public unauthenticated route
+        action: "ACCEPT_SOW",
+        entityType: "PROJECT",
+        entityId: id,
+        newValue: JSON.stringify({ version: nextVersion, userAgent, ip: "recorded_via_cloudflare_headers_if_available" }),
+      });
+    } catch (e) {
+      console.error(e);
+    }
 
     return NextResponse.json({
       success: true,

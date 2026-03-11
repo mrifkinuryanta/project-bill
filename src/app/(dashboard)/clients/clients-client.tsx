@@ -18,6 +18,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -37,6 +44,7 @@ type Client = {
   name: string;
   email: string | null;
   phone: string | null;
+  isArchived: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -51,6 +59,7 @@ export function ClientsClient({
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   // Form state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -138,23 +147,37 @@ export function ClientsClient({
   };
 
   const filteredClients = clients.filter(
-    (client) =>
-      client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (client.email &&
-        client.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (client.phone &&
-        client.phone.includes(searchQuery)),
+    (client) => {
+      const matchesSearch = client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            (client.email && client.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                            (client.phone && client.phone.includes(searchQuery));
+      if (statusFilter === "active" && client.isArchived) return false;
+      if (statusFilter === "archived" && !client.isArchived) return false;
+      return matchesSearch;
+    }
   );
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <Input
-          placeholder="Search clients..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="max-w-sm"
-        />
+        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+          <Input
+            placeholder="Search clients..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full sm:w-[250px]"
+          />
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-[150px]">
+              <SelectValue placeholder="Filter..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Clients</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="archived">Archived</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>

@@ -66,6 +66,7 @@ model Invoice {
   notes          String?   @db.Text
   amount         Decimal   @db.Decimal(19, 4)
   status         String    @default("unpaid") // unpaid, paid
+  emailStatus    String    @default("pending") // pending, sent, failed
   dueDate        DateTime?
   paymentLink    String?
   paymentId      String?
@@ -84,6 +85,7 @@ model User {
   email     String   @unique
   password  String
   name      String
+  role      String   @default("admin") // admin, staff
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -110,16 +112,19 @@ model SOWTemplate {
 }
 
 model AuditLog {
-  id        String   @id @default(uuid())
-  userId    String
-  action    String   // e.g., "settings.update"
-  field     String   // e.g., "mayarApiKey"
-  oldValue  String?  // masked value
-  newValue  String?  // masked value
-  createdAt DateTime @default(now())
+  id         String   @id @default(uuid())
+  userId     String
+  action     String   // e.g., "settings.update", "invoice.create"
+  entityType String?  // e.g., "Invoice", "Project", "Settings"
+  entityId   String?  // e.g., invoice UUID
+  field      String?  // e.g., "mayarApiKey"
+  oldValue   String?  // masked value
+  newValue   String?  // masked value
+  createdAt  DateTime @default(now())
 
   @@index([userId])
   @@index([createdAt])
+  @@index([entityType, entityId])
 }
 
 model RecurringInvoice {

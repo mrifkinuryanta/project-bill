@@ -43,9 +43,13 @@ export const EmailLayout = ({ preview, company, lang = "id", children }: EmailLa
     const c = company || DEFAULT_COMPANY;
     const supportEmail = c.companyEmail || "support@mrndev.me";
 
+    const autoSentText = lang === "id"
+        ? "Pesan ini dikirim secara otomatis oleh sistem, mohon untuk tidak membalas email ini."
+        : "This message was generated automatically by our system, please do not reply to this email.";
+
     const supportText = lang === "id"
-        ? "Butuh bantuan? Hubungi kami di "
-        : "Need help? Contact us at ";
+        ? "Untuk pertanyaan atau bantuan lebih lanjut, silakan hubungi tim dukungan kami di "
+        : "For any questions or further assistance, please contact our support team at ";
 
     return (
         <Html lang={lang}>
@@ -112,6 +116,8 @@ export const EmailLayout = ({ preview, company, lang = "id", children }: EmailLa
                                 lineHeight: "20px",
                             }}
                         >
+                            {autoSentText}
+                            <br />
                             {supportText}
                             <a
                                 href={`mailto:${supportEmail}`}

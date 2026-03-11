@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
 
@@ -162,7 +163,7 @@ export default function SOWTemplatePage() {
                             <div className="p-8 min-h-[500px] overflow-y-auto max-h-[800px] bg-slate-50/50 dark:bg-zinc-950/50">
                                 <div className="prose prose-slate dark:prose-invert max-w-3xl mx-auto prose-headings:font-semibold prose-a:text-indigo-600 dark:prose-a:text-indigo-400 text-slate-700 dark:text-zinc-300 leading-relaxed text-justify">
                                     {template ? (
-                                        <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                                        <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} rehypePlugins={[rehypeSanitize]}>
                                             {template}
                                         </ReactMarkdown>
                                     ) : (

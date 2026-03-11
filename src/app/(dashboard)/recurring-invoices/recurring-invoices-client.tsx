@@ -79,6 +79,8 @@ export function RecurringInvoicesClient({
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [deleteId, setDeleteId] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState("all");
 
     const [id, setId] = useState<string | null>(null);
     const [projectId, setProjectId] = useState("");
@@ -229,6 +231,16 @@ export function RecurringInvoicesClient({
         }
     };
 
+    const filteredRecurringInvoices = recurringInvoices.filter((ri) => {
+        const matchesSearch = ri.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                              ri.project.client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                              ri.project.title.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        if (statusFilter === "active") return matchesSearch && ri.isActive;
+        if (statusFilter === "paused") return matchesSearch && !ri.isActive;
+        return matchesSearch;
+    });
+
     return (
         <>
             <Card>
@@ -248,8 +260,8 @@ export function RecurringInvoicesClient({
                                 </DialogTitle>
                             </DialogHeader>
                             <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2 col-span-2">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2 col-span-1 md:col-span-2">
                                         <Label>Project</Label>
                                         <Select
                                             value={projectId}
@@ -270,7 +282,7 @@ export function RecurringInvoicesClient({
                                         </Select>
                                     </div>
 
-                                    <div className="space-y-2 col-span-2">
+                                    <div className="space-y-2 col-span-1 md:col-span-2">
                                         <Label htmlFor="title">Schedule Name (e.g. Monthly Maintenance)</Label>
                                         <Input
                                             id="title"
@@ -347,7 +359,7 @@ export function RecurringInvoicesClient({
                                         />
                                     </div>
 
-                                    <div className="space-y-2 col-span-2 flex items-center justify-between border rounded-lg p-3">
+                                    <div className="space-y-2 col-span-1 md:col-span-2 flex items-center justify-between border rounded-lg p-3">
                                         <div className="space-y-0.5">
                                             <Label>Active Status</Label>
                                             <p className="text-xs text-muted-foreground">
@@ -360,7 +372,7 @@ export function RecurringInvoicesClient({
                                         />
                                     </div>
 
-                                    <div className="space-y-2 col-span-2">
+                                    <div className="space-y-2 col-span-1 md:col-span-2">
                                         <Label>Line Item Description (will appear on invoice)</Label>
                                         <Input
                                             value={description}
@@ -380,7 +392,26 @@ export function RecurringInvoicesClient({
                     </Dialog>
                 </CardHeader>
                 <CardContent>
-                    {recurringInvoices.length === 0 ? (
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                        <Input
+                            placeholder="Search schedules..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="max-w-sm"
+                        />
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="Filter by status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Statuses</SelectItem>
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="paused">Paused</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {filteredRecurringInvoices.length === 0 ? (
                         <div className="flex flex-col items-center justify-center p-8 text-center bg-muted/20 border border-dashed rounded-lg mt-4">
                             <div className="p-4 bg-primary/10 rounded-full mb-4">
                                 <CalendarClock className="h-8 w-8 text-primary" />
@@ -394,74 +425,147 @@ export function RecurringInvoicesClient({
                             </Button>
                         </div>
                     ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Project / Client</TableHead>
-                                    <TableHead>Schedule</TableHead>
-                                    <TableHead>Amount</TableHead>
-                                    <TableHead>Next Run</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {recurringInvoices.map((ri) => (
-                                    <TableRow key={ri.id} className={!ri.isActive ? "opacity-60" : ""}>
-                                        <TableCell>
-                                            <div className="font-medium">{ri.title}</div>
-                                            <div className="text-sm text-muted-foreground">
-                                                {ri.project.client.name}
+                        <div className="space-y-4">
+                            {/* Mobile View: Cards */}
+                            <div className="grid grid-cols-1 gap-4 md:hidden">
+                                {filteredRecurringInvoices.map((ri) => (
+                                    <Card key={ri.id} className={`overflow-hidden ${!ri.isActive ? "opacity-60" : ""}`}>
+                                        <CardHeader className="border-b border-border/50 pb-3">
+                                            <CardTitle className="flex justify-between items-start text-base gap-2">
+                                                <div className="flex flex-col min-w-0">
+                                                    <span className="truncate pr-2 font-bold">{ri.title}</span>
+                                                    <span className="text-sm font-normal text-muted-foreground truncate">{ri.project.client.name}</span>
+                                                </div>
+                                                <div className="shrink-0 flex flex-col gap-1 items-end">
+                                                    <Badge variant={ri.isActive ? "default" : "secondary"} className="text-[10px] py-0 px-2 uppercase tracking-widest font-bold">
+                                                        {ri.isActive ? "Active" : "Paused"}
+                                                    </Badge>
+                                                    <span className="text-xs text-muted-foreground capitalize">
+                                                        {ri.frequency}
+                                                        {ri.frequency === "monthly" && ` Day ${ri.dayOfMonth}`}
+                                                    </span>
+                                                </div>
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="space-y-3 pt-3">
+                                            <div className="flex justify-between items-center text-muted-foreground">
+                                                <span className="text-sm">Amount</span>
+                                                <span className="font-semibold text-foreground">{formatCurrency(ri.amount, ri.project.currency)}</span>
                                             </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="capitalize font-medium">{ri.frequency}</div>
-                                            <div className="text-xs text-muted-foreground">
-                                                {ri.frequency === "monthly" && `Day ${ri.dayOfMonth}`}
+                                            <div className="flex justify-between items-center text-muted-foreground">
+                                                <span className="text-sm">Next Run</span>
+                                                <span className="font-semibold text-foreground">{format(new Date(ri.nextRunAt), "MMM d, yyyy")}</span>
                                             </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            {formatCurrency(ri.amount, ri.project.currency)}
-                                        </TableCell>
-                                        <TableCell>
-                                            {format(new Date(ri.nextRunAt), "MMM d, yyyy")}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant={ri.isActive ? "default" : "secondary"}>
-                                                {ri.isActive ? "Active" : "Paused"}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex items-center justify-end gap-2">
+
+                                            <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border/50">
                                                 <Button
-                                                    variant="ghost"
-                                                    size="icon"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="w-full px-1 text-xs"
                                                     onClick={() => handleToggleActive(ri)}
-                                                    title={ri.isActive ? "Pause schedule" : "Activate schedule"}
                                                 >
-                                                    <Power className={`h-4 w-4 ${ri.isActive ? "text-emerald-500" : "text-muted-foreground"}`} />
+                                                    <Power className={`h-3 w-3 mr-1 shrink-0 ${ri.isActive ? "text-emerald-500" : "text-muted-foreground"}`} />
+                                                    <span className="truncate">{ri.isActive ? "Pause" : "Activate"}</span>
                                                 </Button>
                                                 <Button
-                                                    variant="ghost"
-                                                    size="icon"
+                                                    variant="secondary"
+                                                    size="sm"
+                                                    className="w-full px-1 text-xs"
                                                     onClick={() => handleOpenDialog(ri)}
                                                 >
-                                                    <Pencil className="h-4 w-4" />
+                                                    <Pencil className="h-3 w-3 mr-1 shrink-0" />
+                                                    <span className="truncate">Edit</span>
                                                 </Button>
                                                 <Button
-                                                    variant="ghost"
-                                                    size="icon"
+                                                    variant="destructive"
+                                                    size="sm"
+                                                    className="w-full px-1 text-xs"
                                                     onClick={() => setDeleteId(ri.id)}
-                                                    className="text-red-500"
                                                 >
-                                                    <Trash2 className="h-4 w-4" />
+                                                    <Trash2 className="h-3 w-3 mr-1 shrink-0" />
+                                                    <span className="truncate">Delete</span>
                                                 </Button>
                                             </div>
-                                        </TableCell>
-                                    </TableRow>
+                                        </CardContent>
+                                    </Card>
                                 ))}
-                            </TableBody>
-                        </Table>
+                            </div>
+
+                            {/* Desktop View: Table */}
+                            <div className="hidden md:block rounded-md border">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Project / Client</TableHead>
+                                            <TableHead>Schedule</TableHead>
+                                            <TableHead>Amount</TableHead>
+                                            <TableHead>Next Run</TableHead>
+                                            <TableHead>Status</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredRecurringInvoices.map((ri) => (
+                                            <TableRow key={ri.id} className={!ri.isActive ? "opacity-60" : ""}>
+                                                <TableCell>
+                                                    <div className="font-medium">{ri.title}</div>
+                                                    <div className="text-sm text-muted-foreground">
+                                                        {ri.project.client.name}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="capitalize font-medium">{ri.frequency}</div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        {ri.frequency === "monthly" && `Day ${ri.dayOfMonth}`}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {formatCurrency(ri.amount, ri.project.currency)}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {format(new Date(ri.nextRunAt), "MMM d, yyyy")}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant={ri.isActive ? "default" : "secondary"}>
+                                                        {ri.isActive ? "Active" : "Paused"}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => handleToggleActive(ri)}
+                                                            title={ri.isActive ? "Pause schedule" : "Activate schedule"}
+                                                        >
+                                                            <Power className={`h-4 w-4 mr-2 ${ri.isActive ? "text-emerald-500" : "text-muted-foreground"}`} />
+                                                            {ri.isActive ? "Pause" : "Activate"}
+                                                        </Button>
+                                                        <Button
+                                                            variant="secondary"
+                                                            size="sm"
+                                                            onClick={() => handleOpenDialog(ri)}
+                                                        >
+                                                            <Pencil className="h-4 w-4 mr-2" />
+                                                            Edit
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => setDeleteId(ri.id)}
+                                                            className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                                                            title="Delete schedule"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
                     )}
 
                     <ConfirmDialog

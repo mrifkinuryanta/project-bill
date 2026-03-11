@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
+import { createAuditLog } from "@/lib/audit-logger";
 
 export async function PATCH(
   request: Request,
@@ -29,6 +30,20 @@ export async function PATCH(
         project: { include: { client: true } },
       },
     });
+
+    try {
+      if (session?.user?.id && Object.keys(updateData).length > 0) {
+         await createAuditLog({
+            userId: session.user.id,
+            action: "UPDATE_INVOICE",
+            entityType: "INVOICE",
+            entityId: invoice.id,
+            newValue: JSON.stringify(updateData),
+         });
+      }
+    } catch (e) {
+      console.error(e)
+    }
 
     return NextResponse.json(invoice);
   } catch (error) {
@@ -86,6 +101,19 @@ export async function DELETE(
         });
       }
     });
+
+    try {
+      if (session?.user?.id) {
+         await createAuditLog({
+            userId: session.user.id,
+            action: "DELETE_INVOICE",
+            entityType: "INVOICE",
+            entityId: id,
+         });
+      }
+    } catch (e) {
+      console.error(e)
+    }
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {

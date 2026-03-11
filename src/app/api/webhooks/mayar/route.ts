@@ -3,9 +3,21 @@ import { prisma } from "@/lib/prisma";
 import { verifyMayarWebhook } from "@/lib/mayar";
 import { generateSowPdfBuffer } from "@/lib/pdf-generator";
 import { sendPaymentSuccessEmail } from "@/lib/email";
+import { RateLimiter } from "@/lib/rate-limit";
+
+// Allow 20 webhook requests per minute per IP to prevent spam/abuse
+const webhookRateLimiter = new RateLimiter({ limit: 20, windowMs: 60 * 1000 });
 
 export async function POST(request: Request) {
   try {
+    // 0. Rate Limiting Check
+    const ip = request.headers.get("x-forwarded-for") || "unknown-ip";
+    const rateLimitResult = webhookRateLimiter.check(ip);
+    if (!rateLimitResult.success) {
+      console.warn(`[Webhook Rate Limit] Exceeded for IP: ${ip}`);
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+
     const payload = await request.text();
     const signature = request.headers.get("x-callback-token") || request.headers.get("x-mayar-signature") || request.headers.get("authorization");
 
@@ -39,23 +51,28 @@ export async function POST(request: Request) {
       }
 
       if (invoiceId) {
-        // Fetch existing first to check if already paid
-        const existingInvoice = await prisma.invoice.findUnique({
-          where: { id: invoiceId },
-        });
-
-        if (existingInvoice?.status === "paid") {
-          console.log(`[Webhook] Invoice ${invoiceId} is already paid. Ignoring duplicate webhook.`);
-          return NextResponse.json({ received: true, ignored: true }, { status: 200 });
-        }
-
-        const updatedInvoice = await prisma.invoice.update({
-          where: { id: invoiceId },
+        // Atomic Update: Only update if status is still 'unpaid'.
+        // If two webhooks fire instantly, only one transaction matches "unpaid".
+        const updateResult = await prisma.invoice.updateMany({
+          where: {
+            id: invoiceId,
+            status: "unpaid",
+          },
           data: {
             status: "paid",
             paidAt: new Date(),
-            paymentId: data.data?.id || data.transaction_id || data.id, // Save the final payment ID back to our DB
+            paymentId: data.data?.id || data.transaction_id || data.id,
           },
+        });
+
+        if (updateResult.count === 0) {
+          console.log(`[Webhook] Invoice ${invoiceId} is already paid or doesn't exist. Ignoring webhook deduplication.`);
+          return NextResponse.json({ received: true, ignored: true }, { status: 200 });
+        }
+
+        // Fetch the updated invoice to trigger emails & PDF
+        const updatedInvoice = await prisma.invoice.findUnique({
+          where: { id: invoiceId },
           include: {
             project: {
               include: {
@@ -64,6 +81,10 @@ export async function POST(request: Request) {
             }
           }
         });
+
+        if (!updatedInvoice) {
+          return NextResponse.json({ error: "Invoice not found post-update" }, { status: 500 });
+        }
 
         // Generate SOW PDF and send Email in the background
         (async () => {

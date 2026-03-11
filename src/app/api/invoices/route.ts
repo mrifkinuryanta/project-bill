@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
+import { createAuditLog } from "@/lib/audit-logger";
 
 export async function GET(request: Request) {
   try {
@@ -86,6 +87,20 @@ export async function POST(request: Request) {
       },
       include: { project: true },
     });
+
+    try {
+      if (session?.user?.id) {
+         await createAuditLog({
+            userId: session.user.id,
+            action: "CREATE_INVOICE",
+            entityType: "INVOICE",
+            entityId: invoice.id,
+            newValue: JSON.stringify({ amount: invoice.amount.toString(), type: invoice.type }),
+         });
+      }
+    } catch (e) {
+      console.error(e)
+    }
 
     return NextResponse.json(invoice, { status: 201 });
   } catch (error) {

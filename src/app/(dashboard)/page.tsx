@@ -6,7 +6,7 @@ import { Users, FileText, Wallet, Clock } from "lucide-react";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const [projectsRaw, unpaidInvoices, invoicesRaw, totalClients] =
+  const [projectsRaw, unpaidInvoices, totalClients, paidInvoicesIDR, unpaidInvoicesIDR] =
     await Promise.all([
       prisma.project.findMany({
         include: { client: true },
@@ -15,30 +15,19 @@ export default async function DashboardPage() {
       prisma.invoice.count({
         where: { status: "unpaid" },
       }),
-      prisma.invoice.findMany({
-        include: { project: true },
-      }),
       prisma.client.count(),
+      prisma.invoice.aggregate({
+        _sum: { amount: true },
+        where: { status: "paid", project: { currency: "IDR" } }
+      }),
+      prisma.invoice.aggregate({
+        _sum: { amount: true },
+        where: { status: "unpaid", project: { currency: "IDR" } }
+      })
     ]);
 
-  // Serializing and calculating actual revenue from invoices
-  let totalRevenueIDR = 0;
-  let pendingRevenueIDR = 0;
-
-  invoicesRaw.forEach((inv) => {
-    const amount = Number(inv.amount);
-    const isIDR = !inv.project.currency || inv.project.currency === "IDR";
-
-    if (inv.status === "paid") {
-      if (isIDR) totalRevenueIDR += amount;
-      // else totalRevenueUSD += amount;
-    } else {
-      if (isIDR) pendingRevenueIDR += amount;
-      // else pendingRevenueUSD += amount;
-    }
-  });
-
-
+  const totalRevenueIDR = Number(paidInvoicesIDR._sum?.amount || 0);
+  const pendingRevenueIDR = Number(unpaidInvoicesIDR._sum?.amount || 0);
 
   const formatCurrency = (amount: number, currencyStr: string) => {
     return new Intl.NumberFormat(currencyStr === "IDR" ? "id-ID" : "en-US", {

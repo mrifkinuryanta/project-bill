@@ -11,6 +11,7 @@ export async function GET() {
   try {
     const session = await auth();
     if (!session) return new NextResponse("Unauthorized", { status: 401 });
+    if (session.user.role !== "admin") return new NextResponse("Forbidden", { status: 403 });
     // We enforce a single config row with id = "global"
     let settings = await prisma.settings.findUnique({
       where: { id: "global" },
@@ -45,6 +46,7 @@ export async function PUT(req: Request) {
   try {
     const session = await auth();
     if (!session) return new NextResponse("Unauthorized", { status: 401 });
+    if (session.user.role !== "admin") return new NextResponse("Forbidden", { status: 403 });
     const body = await req.json();
 
     const parsedBody = body as {
