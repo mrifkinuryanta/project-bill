@@ -146,3 +146,17 @@ model RecurringInvoice {
   @@index([isActive, nextRunAt])
   @@index([projectId])
 }
+
+model Notification {
+  id        String   @id @default(uuid())
+  title     String
+  message   String
+  type      String   // payment, sow_signed, system
+  isRead    Boolean  @default(false)
+  linkUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isRead])
+  @@index([createdAt])
+}

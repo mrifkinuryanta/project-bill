@@ -96,7 +96,7 @@ export default function SOWPrintPage() {
     const dateFormat = language === "id" ? "d MMM yyyy" : "MMM d, yyyy";
 
     return (
-        <div className="bg-white text-black min-h-screen p-8 md:p-12 font-serif mx-auto max-w-[21cm]">
+        <div className="bg-white text-slate-900 min-h-screen p-8 md:p-12 mx-auto max-w-[21cm]">
             <style jsx global>{`
                 @media print {
                     @page {
@@ -117,8 +117,8 @@ export default function SOWPrintPage() {
             <div className="print-content block">
                 <div className="flex justify-between items-start border-b border-slate-200 pb-8 mb-8">
                     <div>
-                        <h1 className="text-3xl font-bold mb-2 text-slate-900">{t.sow}</h1>
-                        <h2 className="text-xl text-slate-600">{project.title}</h2>
+                        <h1 className="text-3xl font-serif font-bold mb-2 text-slate-800 tracking-tight">{t.sow}</h1>
+                        <h2 className="text-xl font-medium text-slate-600 tracking-tight">{project.title}</h2>
                     </div>
                     <div className="text-right text-sm text-slate-500 flex flex-col gap-1">
                         <p><strong className="text-slate-700">{t.client}</strong> {project.client.name}</p>

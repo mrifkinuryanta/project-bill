@@ -451,7 +451,7 @@ export function ProjectsClient({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="terms">
-                      Terms & Conditions (SOW/Contract)
+                      {isSowLocked || isSowSigned ? "Terms & Conditions (SOW/Contract) - Locked" : "Terms & Conditions (SOW/Contract)"}
                     </Label>
                     <Button
                       type="button"
@@ -461,7 +461,7 @@ export function ProjectsClient({
                       className="h-6 px-2 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/50"
                     >
                       <Maximize2 className="w-3 h-3 mr-1" />
-                      Full Screen Edit
+                      {isSowLocked || isSowSigned ? "Full Screen View" : "Full Screen Edit"}
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -471,7 +471,7 @@ export function ProjectsClient({
 
                   <div className="mb-2">
                     <Select
-                      disabled={sowTemplates.length === 0 || isSowLocked}
+                      disabled={sowTemplates.length === 0 || isSowLocked || isSowSigned}
                       onValueChange={(val) => {
                         if (!val) return;
                         const tpl = sowTemplates.find(t => t.id === val);
@@ -937,9 +937,13 @@ export function ProjectsClient({
                     <NotepadTextDashed className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                   </div>
                   <div>
-                    <DialogTitle className="text-lg">Contract Editor</DialogTitle>
+                    <DialogTitle className="text-lg">
+                      {isSowLocked || isSowSigned ? "Contract Viewer" : "Contract Editor"}
+                    </DialogTitle>
                     <DialogDescription className="text-xs">
-                      Write your terms of service or scope of work using Markdown.
+                      {isSowLocked || isSowSigned 
+                        ? "Viewing the signed terms of service or scope of work." 
+                        : "Write your terms of service or scope of work using Markdown."}
                     </DialogDescription>
                   </div>
                 </div>
@@ -983,7 +987,7 @@ export function ProjectsClient({
                   <Textarea
                     className="flex-1 font-mono text-sm leading-relaxed p-6 rounded-none border-0 focus-visible:ring-0 resize-none bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-200"
                     value={terms}
-                    disabled={isSowLocked}
+                    disabled={isSowLocked || isSowSigned}
                     onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setTerms(e.target.value)}
                     placeholder="Write your contract using Markdown here..."
                   />

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit-logger";
+import { createNotification } from "@/lib/notifications";
 
 export async function PATCH(
   request: Request,
@@ -59,6 +60,15 @@ export async function PATCH(
         entityType: "PROJECT",
         entityId: id,
         newValue: JSON.stringify({ version: nextVersion, userAgent, ip: "recorded_via_cloudflare_headers_if_available" }),
+      });
+
+      // Fetch project minimal title for notification
+      const p = await prisma.project.findUnique({ where: { id }, select: { title: true } });
+      await createNotification({
+        title: "SOW Signed",
+        message: `Client accepted SOW for project "${p?.title}".`,
+        type: "sow_signed",
+        linkUrl: `/projects`,
       });
     } catch (e) {
       console.error(e);

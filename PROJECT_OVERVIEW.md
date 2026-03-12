@@ -224,7 +224,21 @@ The full MVP through V1.5 features have been successfully implemented:
     - **Dashboard Optimization:** Replaced in-memory array mapping with `prisma.invoice.aggregate({ _sum })` queries for revenue calculations, offloading computation to PostgreSQL.
     - **Role-Based Access Control (Foundation):** Added `role` field to `User` model (`admin` | `staff`). Extended NextAuth JWT/Session callbacks to include `user.role`. Settings API routes and UI enforce `role === "admin"` authorization checks. Non-admin users see an "Access Denied" page.
 
-## Upcoming: Sprint 16 (V2 Feature Expansion)
+## Current State: V1.8 Complete
+
+34. **In-App Notification System (Sprint 16):**
+    - **Database Schema:** New `Notification` model with `title`, `message`, `type` (`payment`, `sow_signed`, `system`), `isRead`, `linkUrl`, timestamps. Indexed on `isRead` and `createdAt`.
+    - **Server Utility:** Centralized `createNotification()` in `src/lib/notifications.ts` for consistent server-side notification creation.
+    - **REST API:** `/api/notifications` — `GET` (paginated with `?page` & `?limit`, includes `unreadCount`) and `PATCH` (mark single or all as read). Role-based `admin` authorization enforced.
+    - **Event Triggers:** Auto-creates notifications on `payment.success` webhook (links to invoice) and SOW acceptance (links to `/projects` list).
+    - **Notification Bell:** `src/components/notifications/notification-bell.tsx` mounted in the dashboard header. Uses `swr` polling every 15 seconds with optimistic UI for mark-as-read. Displays unread badge counter (capped at `99+`).
+    - **Real-Time Toasts:** Integrated `sonner` in `layout.tsx` with `position="top-right"` to alert users of new notifications instantly.
+    - **Full History Page:** Dedicated `/notifications` route with server-side pre-fetching and client-side SWR pagination (`Previous` / `Next` controls). Type-specific icons and badges (Payment = emerald, Document = blue). Individual "Mark as read" and "View Details" actions per notification.
+    - **Hydration-Safe i18n:** Browser locale detection extracted to `src/lib/i18n.ts` (`getBrowserLocale()`). Uses `useState` + `useEffect` pattern to prevent Next.js server/client hydration mismatches. Supports `id` (Indonesian) and `en` (English) date-fns locales.
+    - **NextAuth SessionProvider:** Added global `<Providers>` wrapper (`src/components/providers.tsx`) in root `layout.tsx` to provide `useSession` context to all client components.
+    - **"View all" Link:** Notification Bell popover footer includes a persistent link to the full `/notifications` history page.
+
+## Upcoming: Sprint 17 (V2 Feature Expansion)
 The next development cycle will focus on expanding core functionality. Potential candidates:
 
 1. **Client Portal (Multitenant Dashboards)** — A dedicated login area or permanent token link for clients to view all their past invoices, project status, and download SOWs from a single unified screen.
@@ -232,6 +246,7 @@ The next development cycle will focus on expanding core functionality. Potential
 3. **Partial Payments & Milestones** — Expanding beyond DP & Balance to support multi-stage payment terms (e.g., 30% Design, 40% Develop, 30% Launch).
 4. **Time-Tracking & Hourly Billing** — An in-app stopwatch linked to projects that automatically compiles hours worked into billable invoice line-items at the end of the month.
 - **Multi-Currency Payment Gateway** — Currently disabled. If international clients are targeted, re-enable USD in `projects-client.tsx` and integrate Stripe Checkout for USD invoices alongside Mayar (IDR).
+
 ## Notes for the Next Agent
 - All layout components and global CSS are already set up.
 - Use Shadcn UI (`npx shadcn@latest add ...`) for any new UI components to maintain visual consistency.
@@ -258,3 +273,6 @@ The next development cycle will focus on expanding core functionality. Potential
 - **RBAC:** `session.user.role` is available in all authenticated contexts. Use `role === "admin"` checks on sensitive API routes. The Settings page has both API and UI guards.
 - **Docker Backup:** The `db-backup` sidecar in `docker-compose.yml` is optional. Users on managed DBs (Supabase, Neon, Dockploy) should remove it.
 - **Markdown Sanitization:** All `<ReactMarkdown>` components must include `rehypePlugins={[rehypeSanitize]}` to prevent XSS. Always add this when creating new Markdown rendering instances.
+- **Notification System:** Use `createNotification()` from `src/lib/notifications.ts` to trigger notifications from any server-side code. Supported types: `payment`, `sow_signed`, `system`. The `/api/notifications` route supports `?page` and `?limit` query params for pagination.
+- **i18n Locale Detection:** Browser locale detection lives in `src/lib/i18n.ts` (`getBrowserLocale()`). Always use the `useState` + `useEffect` pattern in client components to avoid Next.js hydration mismatches. Currently supports `id` and `en` locales.
+- **NextAuth SessionProvider:** The global `<Providers>` wrapper in `src/components/providers.tsx` provides NextAuth `SessionProvider` context. Any client component using `useSession()` must be rendered within this provider (already handled in root `layout.tsx`).

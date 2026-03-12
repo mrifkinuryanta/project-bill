@@ -23,7 +23,7 @@ describe("verifyMayarWebhook", () => {
     // Dynamically import the module so it reads the updated process.env
     const { verifyMayarWebhook } = await import("../src/lib/mayar");
 
-    const result = verifyMayarWebhook("test_payload", "any_signature");
+    const result = await verifyMayarWebhook("test_payload", "any_signature");
     expect(result).toBe(false);
 
     consoleSpy.mockRestore();
@@ -43,7 +43,7 @@ describe("verifyMayarWebhook", () => {
       .update(payload)
       .digest("hex");
 
-    const result = verifyMayarWebhook(payload, signature);
+    const result = await verifyMayarWebhook(payload, signature);
     expect(result).toBe(true);
   });
 
@@ -61,7 +61,7 @@ describe("verifyMayarWebhook", () => {
       .update(payload)
       .digest("hex");
 
-    const result = verifyMayarWebhook(payload, invalidSignature);
+    const result = await verifyMayarWebhook(payload, invalidSignature);
     expect(result).toBe(false);
   });
 
@@ -76,7 +76,7 @@ describe("verifyMayarWebhook", () => {
     // Provide a signature that is valid hex but wrong length
     const invalidSignature = "1234abcd";
 
-    const result = verifyMayarWebhook(payload, invalidSignature);
+    const result = await verifyMayarWebhook(payload, invalidSignature);
     expect(result).toBe(false);
   });
 });

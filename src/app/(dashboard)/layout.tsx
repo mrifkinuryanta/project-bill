@@ -10,6 +10,7 @@ import { SwipeSidebarHandler } from "@/components/swipe-sidebar-handler";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 export const metadata: Metadata = {
   title: "ProjectBill",
@@ -46,8 +47,13 @@ export default async function DashboardLayout({
       <SwipeSidebarHandler />
       <AppSidebar user={dbUser || session.user} company={settings || undefined} />
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger className="-ml-1" />
+        <header className="flex h-16 shrink-0 items-center justify-between border-b px-4">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger className="-ml-1" />
+          </div>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+          </div>
         </header>
         <main className="flex flex-1 flex-col gap-4 p-4 lg:p-6 lg:gap-8">
           {children}

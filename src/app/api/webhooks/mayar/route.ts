@@ -4,6 +4,7 @@ import { verifyMayarWebhook } from "@/lib/mayar";
 import { generateSowPdfBuffer } from "@/lib/pdf-generator";
 import { sendPaymentSuccessEmail } from "@/lib/email";
 import { RateLimiter } from "@/lib/rate-limit";
+import { createNotification } from "@/lib/notifications";
 
 // Allow 20 webhook requests per minute per IP to prevent spam/abuse
 const webhookRateLimiter = new RateLimiter({ limit: 20, windowMs: 60 * 1000 });
@@ -85,6 +86,14 @@ export async function POST(request: Request) {
         if (!updatedInvoice) {
           return NextResponse.json({ error: "Invoice not found post-update" }, { status: 500 });
         }
+
+        // --- Trigger Notification ---
+        await createNotification({
+          title: "Payment Received",
+          message: `Invoice ${updatedInvoice.invoiceNumber} for project "${updatedInvoice.project.title}" was marked as paid.`,
+          type: "payment",
+          linkUrl: `/invoices/${updatedInvoice.id}`,
+        });
 
         // Generate SOW PDF and send Email in the background
         (async () => {
