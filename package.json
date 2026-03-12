@@ -1,11 +1,11 @@
 {
-  "name": "temp-app",
+  "name": "project-bill",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p $(grep '^PORT=' .env | cut -d '=' -f2 || echo 3000)",
     "build": "prisma generate && next build",
-    "start": "next start",
+    "start": "next start -p $(grep '^PORT=' .env | cut -d '=' -f2 || echo 3000)",
     "lint": "eslint",
     "test": "jest",
     "test:e2e": "playwright test",
