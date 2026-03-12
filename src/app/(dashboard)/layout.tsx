@@ -12,6 +12,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "ProjectBill",
   description: "Self-hosted invoicing and project tracking",
