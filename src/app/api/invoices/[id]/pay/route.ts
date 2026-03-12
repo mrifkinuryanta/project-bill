@@ -39,7 +39,15 @@ export async function POST(
       );
     }
 
-    const baseUrl = process.env.APP_URL || "http://localhost:3000";
+    const invoiceAmount = Number(invoice.amount);
+    const taxRate = invoice.project.taxRate ? Number(invoice.project.taxRate) : 0;
+    const taxAmount = invoiceAmount * (taxRate / 100);
+    const grandTotal = invoiceAmount + taxAmount;
+
+    let baseUrl = process.env.APP_URL || "http://localhost:3000";
+    if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
+      baseUrl = `https://${baseUrl}`;
+    }
 
     let expiredAtDate: string | undefined;
     if (invoice.dueDate) {
@@ -54,11 +62,6 @@ export async function POST(
         expiredAtDate = due.toISOString();
       }
     }
-
-    const invoiceAmount = Number(invoice.amount);
-    const taxRate = invoice.project.taxRate ? Number(invoice.project.taxRate) : 0;
-    const taxAmount = invoiceAmount * (taxRate / 100);
-    const grandTotal = invoiceAmount + taxAmount;
 
     // Prepare payload for Mayar API `create payment link`
     const mayarRes = await createPaymentLink({
