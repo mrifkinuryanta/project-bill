@@ -27,11 +27,7 @@ import {
   ChevronLeft,
   ChevronRight,
   SkipForward,
-  Check,
-  ImageIcon,
-  Mail,
-  Phone,
-  MapPin,
+  Check
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -161,7 +157,7 @@ export function OnboardingModal({ isOpen: initialIsOpen, userName, existingSetti
     if (values.bankName) payload.bankName = values.bankName;
     if (values.bankAccountName) payload.bankAccountName = values.bankAccountName;
     if (values.bankAccountNumber) payload.bankAccountNumber = values.bankAccountNumber;
-    
+
     const ok = await saveSettings(payload);
     if (ok) setCurrentStep((s) => s + 1);
   };
@@ -616,10 +612,13 @@ export function OnboardingModal({ isOpen: initialIsOpen, userName, existingSetti
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[600px] w-[95vw] p-0 gap-0 overflow-hidden hide-close-button max-h-[90vh] flex flex-col">
+      <DialogContent
+        showCloseButton={false}
+        className="sm:max-w-[600px] w-[95vw] p-0 gap-0 overflow-hidden max-h-[90vh] flex flex-col"
+      >
         {/* Header / Stepper section (Fixed at top) */}
         <div className="bg-muted/30 px-4 py-3 sm:px-6 sm:py-3 border-b shrink-0 space-y-2.5">
-          <div className="flex items-center justify-between pr-8 sm:pr-10">
+          <div className="flex items-center justify-between">
             <h2 className="text-lg sm:text-xl font-bold tracking-tight">Setup Assistant</h2>
             <span className="text-xs sm:text-sm font-medium text-muted-foreground">
               Step {currentStep + 1} of {STEPS.length}
