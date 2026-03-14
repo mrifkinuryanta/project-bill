@@ -628,7 +628,7 @@ export function DashboardClient({
               <span className="font-semibold text-foreground">
                 &ldquo;{completionProject?.title}&rdquo;
               </span>{" "}
-              akan dipindahkan ke{" "}
+              will be moved to{" "}
               <Badge
                 variant="outline"
                 className="ml-1 text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200"
@@ -640,7 +640,7 @@ export function DashboardClient({
 
           <div className="space-y-3 py-2">
             <p className="text-sm text-muted-foreground">
-              Apakah Anda ingin langsung membuat tagihan pelunasan untuk{" "}
+              Would you like to instantly generate a final payment invoice for{" "}
               <strong>{completionProject?.client.name}</strong>?
             </p>
 
@@ -657,7 +657,7 @@ export function DashboardClient({
                 </div>
                 {completionHasDpInvoice && completionProject.dpAmount && (
                   <div className="flex justify-between text-emerald-600">
-                    <span>DP Terkirim</span>
+                    <span>Down Payment Billed</span>
                     <span>
                       -
                       {formatCurrency(
@@ -672,7 +672,7 @@ export function DashboardClient({
 
             {completionHasFullInvoice && (
               <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
-                ⚠️ Tagihan Full Payment sudah pernah dibuat untuk proyek ini.
+                ⚠️ A Full Payment invoice has already been generated for this project.
               </p>
             )}
           </div>

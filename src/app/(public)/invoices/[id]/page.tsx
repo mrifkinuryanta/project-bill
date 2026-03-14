@@ -129,15 +129,16 @@ export default async function InvoiceViewPage(props: {
 
       {/* A4 Container */}
       <div className="w-full max-w-[210mm] min-h-[297mm] bg-white shadow-xl print:shadow-none p-12 text-slate-900 relative flex flex-col">
-        {/* Watermark Section */}
-        <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none overflow-hidden print:overflow-visible">
-          <div
-            className={`transform -rotate-45 text-[8rem] sm:text-[10rem] font-black uppercase tracking-widest opacity-[0.03] print:opacity-[0.06] select-none ${invoice.status === "paid" ? "text-emerald-600" : "text-slate-600"
-              }`}
-          >
-            {invoice.status === "paid" ? t.paid : t.unpaid}
+        {/* Watermark Section - Show only when paid */}
+        {invoice.status === "paid" && (
+          <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none overflow-hidden print:overflow-visible">
+            <div
+              className="transform -rotate-45 text-[8rem] sm:text-[10rem] font-black uppercase tracking-widest opacity-[0.03] print:opacity-[0.06] select-none text-emerald-600"
+            >
+              {t.paid}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Header Section */}
         <div className="flex justify-between items-start mb-12 relative z-10 w-full">
@@ -153,10 +154,9 @@ export default async function InvoiceViewPage(props: {
               </h1>
             )}
             <p className="text-sm text-slate-500 max-w-[250px] whitespace-pre-wrap">
-              {settings.companyAddress ||
-                "123 Technology Drive\nInnovation City, TX 78701"}
+              {settings.companyAddress}
               <br />
-              {settings.companyEmail || "contact@projectbill.com"}
+              {settings.companyEmail}
               {settings.companyWhatsApp && (
                 <>
                   <br />
