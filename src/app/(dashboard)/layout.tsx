@@ -11,6 +11,9 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { OnboardingModal } from "@/components/onboarding-modal";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "ProjectBill",
@@ -34,12 +37,16 @@ export default async function DashboardLayout({
 
   const dbUser = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { name: true, email: true },
+    select: { name: true, email: true, onboardingCompleted: true },
   });
 
   const settings = await prisma.settings.findUnique({
     where: { id: "global" },
-    select: { companyName: true, companyLogoUrl: true },
+  });
+
+  const clients = await prisma.client.findMany({
+    orderBy: { createdAt: "desc" },
+    select: { id: true, name: true },
   });
 
   return (
@@ -59,6 +66,29 @@ export default async function DashboardLayout({
           {children}
         </main>
       </SidebarInset>
+      
+      {/* Onboarding Wizard Modal */}
+      {dbUser && dbUser.onboardingCompleted === false && (
+        <OnboardingModal
+          isOpen={true}
+          userName={dbUser.name}
+          existingSettings={settings ? {
+            companyName: settings.companyName || "",
+            companyAddress: settings.companyAddress || "",
+            companyEmail: settings.companyEmail || "",
+            senderEmail: settings.senderEmail || "",
+            companyLogoUrl: settings.companyLogoUrl || "",
+            companyWhatsApp: settings.companyWhatsApp || "",
+            bankName: settings.bankName || "",
+            bankAccountName: settings.bankAccountName || "",
+            bankAccountNumber: settings.bankAccountNumber || "",
+            resendApiKey: settings.resendApiKey || "",
+            mayarApiKey: settings.mayarApiKey || "",
+            mayarWebhookSecret: settings.mayarWebhookSecret || "",
+          } : undefined}
+          existingClients={clients}
+        />
+      )}
     </SidebarProvider>
   );
 }

@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { PayButton } from "./pay-button";
 import { PrintButton } from "./print-button";
 import { CompanyLogo } from "@/components/company-logo";
+import { ManualPaymentInstructions } from "./manual-payment";
 import { TermsAgreement } from "./terms-agreement";
 import { RealtimeInvoicePoller } from "@/components/realtime-invoice-poller";
 import { format } from "date-fns";
@@ -18,7 +19,7 @@ const TRANSLATIONS: Record<string, Record<TranslationKey, string>> = {
     date: "Date:",
     dueDate: "Due Date:",
     paid: "Paid",
-    unpaid: "Unpaid",
+    unpaid: "Awaiting Payment",
     billTo: "Bill To",
     projectDetails: "Project Details",
     description: "Description",
@@ -44,7 +45,7 @@ const TRANSLATIONS: Record<string, Record<TranslationKey, string>> = {
     date: "Tanggal:",
     dueDate: "Jatuh Tempo:",
     paid: "Lunas",
-    unpaid: "Belum Bayar",
+    unpaid: "Menunggu Pembayaran",
     billTo: "Tagihan Kepada",
     projectDetails: "Detail Proyek",
     description: "Deskripsi",
@@ -82,14 +83,15 @@ export default async function InvoiceViewPage(props: {
   const settings = (await prisma.settings.findUnique({
     where: { id: "global" },
   })) || {
-    companyName: "ProjectBill Consulting",
+    companyName: "ProjectBill",
     companyAddress: null,
     companyEmail: null,
     companyLogoUrl: null,
     bankName: null,
-    bankAccount: null,
-    accountHolder: null,
+    bankAccountName: null,
+    bankAccountNumber: null,
     companyWhatsApp: null,
+    mayarApiKey: null,
   };
 
   if (!invoice) return notFound();
@@ -115,18 +117,31 @@ export default async function InvoiceViewPage(props: {
   const taxAmount = invoiceAmount * (taxRate / 100);
   const grandTotal = invoiceAmount + taxAmount;
 
+  const hasMayar = !!settings.mayarApiKey;
+
   return (
     <div className="light-theme min-h-screen bg-neutral-100 py-10 print:py-0 print:bg-white flex justify-center flex-col items-center gap-6">
       {invoice.status !== "paid" && <RealtimeInvoicePoller invoiceId={invoice.id} />}
       {/* Toolbar outside the A4 paper */}
       <div className="w-full max-w-[210mm] flex justify-end print:hidden gap-2">
-        <PrintButton />
+        <PrintButton invoiceId={invoice.id} />
       </div>
 
       {/* A4 Container */}
       <div className="w-full max-w-[210mm] min-h-[297mm] bg-white shadow-xl print:shadow-none p-12 text-slate-900 relative flex flex-col">
+        {/* Watermark Section - Show only when paid */}
+        {invoice.status === "paid" && (
+          <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none overflow-hidden print:overflow-visible">
+            <div
+              className="transform -rotate-45 text-[8rem] sm:text-[10rem] font-black uppercase tracking-widest opacity-[0.03] print:opacity-[0.06] select-none text-emerald-600"
+            >
+              {t.paid}
+            </div>
+          </div>
+        )}
+
         {/* Header Section */}
-        <div className="flex justify-between items-start mb-12">
+        <div className="flex justify-between items-start mb-12 relative z-10 w-full">
           <div className="space-y-1">
             {settings.companyLogoUrl ? (
               <CompanyLogo
@@ -139,10 +154,9 @@ export default async function InvoiceViewPage(props: {
               </h1>
             )}
             <p className="text-sm text-slate-500 max-w-[250px] whitespace-pre-wrap">
-              {settings.companyAddress ||
-                "123 Technology Drive\nInnovation City, TX 78701"}
+              {settings.companyAddress}
               <br />
-              {settings.companyEmail || "contact@projectbill.com"}
+              {settings.companyEmail}
               {settings.companyWhatsApp && (
                 <>
                   <br />
@@ -160,7 +174,7 @@ export default async function InvoiceViewPage(props: {
                 {t.invoiceNo}
               </span>
               <span className="font-mono font-medium">
-                #{invoice.invoiceNumber}
+                {invoice.invoiceNumber}
               </span>
               <span className="font-semibold text-slate-500 uppercase">
                 {t.date}
@@ -183,7 +197,7 @@ export default async function InvoiceViewPage(props: {
         </div>
 
         {/* Status Badge (Absolute Positioned for style) */}
-        <div className="absolute top-12 right-[50%] translate-x-[50%] print:hidden">
+        <div className="absolute top-12 right-[50%] translate-x-[50%] print:hidden z-10">
           {invoice.status === "paid" ? (
             <Badge variant="outline" className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-300 border text-xs py-1 px-3 uppercase tracking-widest font-bold">
               {t.paid}
@@ -191,7 +205,7 @@ export default async function InvoiceViewPage(props: {
           ) : (
             <Badge
               variant="outline"
-              className="bg-red-100 text-red-800 hover:bg-red-200 border-red-300 border text-xs py-1 px-3 uppercase tracking-widest font-bold"
+              className="bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-300 border text-xs py-1 px-3 uppercase tracking-widest font-bold"
             >
               {t.unpaid}
             </Badge>
@@ -199,7 +213,7 @@ export default async function InvoiceViewPage(props: {
         </div>
 
         {/* Billing Details */}
-        <div className="flex justify-between mb-12 bg-slate-50 p-6 rounded-lg border border-slate-100 print:bg-transparent print:border-none print:p-0">
+        <div className="flex justify-between mb-12 bg-slate-50 p-6 rounded-lg border border-slate-100 print:bg-transparent print:border-none print:p-0 relative z-10">
           <div className="space-y-2">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
               {t.billTo}
@@ -229,7 +243,7 @@ export default async function InvoiceViewPage(props: {
         </div>
 
         {/* Table Section */}
-        <div className="mt-4 flex-grow">
+        <div className="mt-4 flex-grow relative z-10 bg-white/50 print:bg-transparent">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b-2 border-slate-800">
@@ -431,7 +445,7 @@ export default async function InvoiceViewPage(props: {
         </div>
 
         {/* Footer Section */}
-        <div className="mt-auto pt-16">
+        <div className="mt-auto pt-16 relative z-10 bg-white print:bg-transparent">
           {invoice.status !== "paid" &&
             invoice.project.currency === "IDR" &&
             (invoice.project.terms ? (
@@ -443,12 +457,30 @@ export default async function InvoiceViewPage(props: {
                 }
                 language={lang as "en" | "id"}
               >
-                <PayButton
-                  invoiceId={invoice.id}
-                  amountStr={formatCurrency(grandTotal, "IDR")}
-                  lang={lang as "id" | "en"}
-                />
+                {!hasMayar ? (
+                  <ManualPaymentInstructions
+                    bankName={settings.bankName}
+                    bankAccountName={settings.bankAccountName}
+                    bankAccountNumber={settings.bankAccountNumber}
+                    invoiceNumber={invoice.invoiceNumber}
+                    lang={lang as "id" | "en"}
+                  />
+                ) : (
+                  <PayButton
+                    invoiceId={invoice.id}
+                    amountStr={formatCurrency(grandTotal, "IDR")}
+                    lang={lang as "id" | "en"}
+                  />
+                )}
               </TermsAgreement>
+            ) : !hasMayar ? (
+              <ManualPaymentInstructions
+                bankName={settings.bankName}
+                bankAccountName={settings.bankAccountName}
+                bankAccountNumber={settings.bankAccountNumber}
+                invoiceNumber={invoice.invoiceNumber}
+                lang={lang as "id" | "en"}
+              />
             ) : (
               <PayButton
                 invoiceId={invoice.id}

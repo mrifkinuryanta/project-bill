@@ -6,6 +6,7 @@ const envSchema = z.object({
   ENCRYPTION_KEY: z.string().length(64, "ENCRYPTION_KEY must be a 64-char hex string (32 bytes)"),
   APP_URL: z.string().optional(),
   CRON_SECRET: z.string().optional(),
+  AUTH_TRUST_HOST: z.string().optional(),
 });
 
 // Validate `process.env` against our schema

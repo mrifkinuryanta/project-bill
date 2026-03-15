@@ -1,9 +1,11 @@
 import puppeteer from 'puppeteer';
+import { getBaseUrl } from './utils';
 
 export async function generateSowPdfBuffer(invoiceId: string): Promise<Buffer> {
-    const baseUrl = process.env.APP_URL || "http://localhost:3000";
+    const baseUrl = getBaseUrl();
     // We use the exact print URL the user likes
     const targetUrl = `${baseUrl}/invoices/${invoiceId}/sow/print`;
+    console.log(`[PDF Generator] Target URL for SOW: ${targetUrl}`);
 
     const browser = await puppeteer.launch({
         headless: true,
@@ -32,6 +34,46 @@ export async function generateSowPdfBuffer(invoiceId: string): Promise<Buffer> {
         const pdfBuffer = await page.pdf({
             format: 'A4',
             printBackground: true, // ensure background colors/borders are printed
+            margin: {
+                top: '0cm',
+                bottom: '0cm',
+                left: '0cm',
+                right: '0cm'
+            }
+        });
+
+        return Buffer.from(pdfBuffer);
+    } finally {
+        await browser.close();
+    }
+}
+
+export async function generateInvoicePdfBuffer(invoiceId: string): Promise<Buffer> {
+    const baseUrl = getBaseUrl();
+    const targetUrl = `${baseUrl}/invoices/${invoiceId}/print`;
+    console.log(`[PDF Generator] Target URL for Invoice: ${targetUrl}`);
+
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+
+    try {
+        const page = await browser.newPage();
+
+        await page.setViewport({ width: 1200, height: 800 });
+
+        await page.setExtraHTTPHeaders({
+            'ngrok-skip-browser-warning': 'true',
+        });
+
+        await page.goto(targetUrl, { waitUntil: 'networkidle0', timeout: 30000 });
+
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+
+        const pdfBuffer = await page.pdf({
+            format: 'A4',
+            printBackground: true,
             margin: {
                 top: '0cm',
                 bottom: '0cm',

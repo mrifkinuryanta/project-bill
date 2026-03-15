@@ -234,9 +234,32 @@ The full MVP through V1.5 features have been successfully implemented:
     - **Notification Bell:** `src/components/notifications/notification-bell.tsx` mounted in the dashboard header. Uses `swr` polling every 15 seconds with optimistic UI for mark-as-read. Displays unread badge counter (capped at `99+`).
     - **Real-Time Toasts:** Integrated `sonner` in `layout.tsx` with `position="top-right"` to alert users of new notifications instantly.
     - **Full History Page:** Dedicated `/notifications` route with server-side pre-fetching and client-side SWR pagination (`Previous` / `Next` controls). Type-specific icons and badges (Payment = emerald, Document = blue). Individual "Mark as read" and "View Details" actions per notification.
+    - **Global Onboarding Setup Assistant:** Built a mobile-first, multi-step Setup Assistant modal (`<OnboardingModal />`) that intercepts new users on the dashboard if `onboardingCompleted` is false.
+      - Includes 7 distinct wizard steps: Welcome, Company Profile, Bank Details, Integrations, Create First Client, Create First Project, and Celebration.
+      - Uses forced-completion logic (cannot be dismissed by clicking outside or pressing ESC), ensuring users configure mandatory billing settings before using the app.
+      - Saves data progressively step-by-step to the database (Settings, Clients, Projects) so progress isn't lost.
     - **Hydration-Safe i18n:** Browser locale detection extracted to `src/lib/i18n.ts` (`getBrowserLocale()`). Uses `useState` + `useEffect` pattern to prevent Next.js server/client hydration mismatches. Supports `id` (Indonesian) and `en` (English) date-fns locales.
     - **NextAuth SessionProvider:** Added global `<Providers>` wrapper (`src/components/providers.tsx`) in root `layout.tsx` to provide `useSession` context to all client components.
     - **"View all" Link:** Notification Bell popover footer includes a persistent link to the full `/notifications` history page.
+  
+ 35. **Code Quality & Stability Patches (Sprint 16 Patch):**
+     - **Reusable Form Architecture:** Extracted Zod validation schemas (`src/lib/validations/settings.ts`) and built highly modular, reusable React components (`CompanyProfileFields`, `BankDetailsFields`, `IntegrationsFields`). These are now shared seamlessly between the `/settings` page and the initial `/setup` Onboarding Wizard, eliminating boilerplate.
+     - **Settings API Upsert (P2025 Fix):** Refactored `PUT /api/settings` to use `prisma.settings.upsert` instead of `update`. This ensures the global settings record is safely initialized even if the database was completely cleared, resolving the `P2025 Record not found` Prisma error during onboarding.
+     - **Recharts Deprecation Refactor:** Completely removed usage of the deprecated `<Cell />` component in `OverviewCharts` (protecting against the upcoming Recharts 4.0 removal). Refactored `<Bar />` charts to use the `shape` prop with custom `<Rectangle />` rendering, and refactored `<Pie />` charts by injecting `fill` properties directly into the data array.
+     - **Dashboard Empty State Hardening:** Fixed a fatal `TypeError` crash in Recharts when project/revenue data was entirely empty. Ensured that "No Projects" placeholder data is hidden from the legend hover tooltip and correctly excluded from the "Total Projects" center calculation (shows 0 instead of 1).
+
+ 36. **UI Polish, Auth Fixes & Tech Debt Cleanup (Sprint 16 Patch 2):**
+     - **Settings Route Stabilization:** Converted the `/settings` page from a Client Component to a Server Component using `auth()` to resolve stale session states that caused "Access Denied" errors immediately after initial onboarding.
+     - **Onboarding Modal Form Upgrade:** Refactored the Client and Project creation steps inside `<OnboardingModal />` to fully utilize ShadcnUI `FormField`, `FormItem`, and `Select` components, backed by strict Zod schemas and `react-hook-form` for robust validation.
+     - **Sidebar Aesthetics:** Enhanced the collapsible sidebar so the header gracefully hides text and retains only the company logo when compressed into icon mode, keeping the UI uncluttered.
+     - **Recurring Invoice Email Template:** The server action `send-invoice.ts` now dynamically detects if `invoice.type === "recurring"` and routes the email through the specialized `RecurringInvoiceEmail.tsx` template, featuring custom messaging for subscription billing.
+     - **Knip Core Cleanup:** Resolved technical debt by configuring `knip.json` to properly ignore valid ShadcnUI exports and raw React Email templates, eliminating false-positive bloat. Removed completely unused packages (e.g., `jest-mock-extended`) to lighten `.node_modules` footprint.
+
+ 37. **Core Reliability & Visual Consistency Patches (Sprint 16 Patch 3):**
+     - **URL Generator Robustness:** Centralized all absolute URL generation across PDF rendering and Email links into a safe `getBaseUrl()` utility, robustly handling `APP_URL`, `VERCEL_URL`, and `localhost` fallbacks while sanitizing trailing slashes to prevent `ERR_INVALID_URL` crashes during automated background tasks.
+     - **Custom Email Identity:** Integrated the dynamic `companyName` and `companyEmail` from global settings directly into the Resend `from:` field, ensuring clients receive communications from a matching branded sender identity instead of a generic default.
+     - **Skeleton UI Standardization:** Synchronized loading state skeletons across the entire dashboard (`/`, `/clients`, `/invoices`, `/projects`, `/board`) to exactly match the rendered components' layouts, eliminating jarring layout shifts (Cumulative Layout Shift) during data fetching.
+     - **Notification Routing Fix:** Corrected the `linkUrl` for manual "Mark as Paid" notifications to use the immutable database UUID instead of the display invoice number, preventing 404 errors when admins click the notification bell alert.
 
 ## Upcoming: Sprint 17 (V2 Feature Expansion)
 The next development cycle will focus on expanding core functionality. Potential candidates:

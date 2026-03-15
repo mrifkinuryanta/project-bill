@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { sendInvoiceEmail } from "@/app/actions/send-invoice";
 import { auth } from "@/auth";
 import { generateInvoiceNumber } from "@/lib/invoice-utils";
+import { getBaseUrl } from "@/lib/utils";
 
 export async function POST(request: Request) {
   try {
@@ -77,24 +78,36 @@ export async function POST(request: Request) {
       },
     });
 
-    const fallbackHost = request.headers.get("host") || "localhost:3000";
-    const fallbackProtocol = fallbackHost.includes("localhost") ? "http" : "https";
-    const baseUrl = process.env.APP_URL || `${fallbackProtocol}://${fallbackHost}`;
+    const baseUrl = getBaseUrl();
     const invoiceDetailUrl = `${baseUrl}/invoices/${newInvoice.id}`;
 
     // Soft-fail: Try communicating with Resend, but don't fail the whole block if it errors.
-    let emailSuccess = false;
+    let emailSent = false;
+    let manual = false;
+    let mailtoData: { to: string; subject: string; body: string } | undefined;
+    
     if (project.client.email) {
       try {
-        const emailRes = await sendInvoiceEmail(newInvoice.id);
-        emailSuccess = emailRes.success;
+        const emailRes = await sendInvoiceEmail(newInvoice.id, true);
+        if (emailRes.success && !emailRes.manual) {
+          emailSent = true;
+        }
+        if (emailRes.manual) {
+          manual = true;
+          mailtoData = emailRes.mailtoData;
+        }
       } catch (err) {
         console.error("Email delivery failed non-fatally", err);
       }
     }
 
-    return NextResponse.json(
-      { invoice: newInvoice, emailSent: emailSuccess },
+    return NextResponse.json({ 
+      success: true, 
+      invoice: newInvoice, 
+      emailSent,
+      manual,
+      mailtoData: mailtoData
+    },
       { status: 201 },
     );
   } catch (error) {

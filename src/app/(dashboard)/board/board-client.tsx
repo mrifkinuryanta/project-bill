@@ -42,6 +42,7 @@ import {
   Archive,
 } from "lucide-react";
 import { toast } from "sonner";
+import { EmailProviderModal } from "@/components/email-provider-modal";
 
 type Client = { id: string; name: string };
 type ProjectItem = { id: string; description: string; price: string };
@@ -85,6 +86,9 @@ export function DashboardClient({
 
   // Archive Toggle State
   const [showArchived, setShowArchived] = useState(false);
+
+  // Email Modal State
+  const [emailModalData, setEmailModalData] = useState<{ to: string; subject: string; body: string } | null>(null);
 
   const formatCurrency = (amount: string | number, currencyStr: string) => {
     return new Intl.NumberFormat(currencyStr === "IDR" ? "id-ID" : "en-US", {
@@ -192,9 +196,24 @@ export function DashboardClient({
 
         if (data.emailSent) {
           toast.success("Invoice generated and email dispatched to client");
+        } else if (data.manual) {
+          toast.success("Manual Mode Enabled", {
+            description: "Please select your preferred email provider.",
+            duration: 5000,
+            action: data.invoice?.paymentLink ? {
+              label: "Copy Link",
+              onClick: () => {
+                navigator.clipboard.writeText(data.invoice.paymentLink);
+                toast.success("Link copied!");
+              }
+            } : undefined,
+          });
+          if (data.mailtoData) {
+            setEmailModalData(data.mailtoData);
+          }
         } else {
           toast.success(
-            "Invoice generated successfully. (Email skipped or mocked)",
+            "Invoice generated successfully. (Email skipped or failed)",
           );
         }
         router.refresh();
@@ -609,7 +628,7 @@ export function DashboardClient({
               <span className="font-semibold text-foreground">
                 &ldquo;{completionProject?.title}&rdquo;
               </span>{" "}
-              akan dipindahkan ke{" "}
+              will be moved to{" "}
               <Badge
                 variant="outline"
                 className="ml-1 text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200"
@@ -621,7 +640,7 @@ export function DashboardClient({
 
           <div className="space-y-3 py-2">
             <p className="text-sm text-muted-foreground">
-              Apakah Anda ingin langsung membuat tagihan pelunasan untuk{" "}
+              Would you like to instantly generate a final payment invoice for{" "}
               <strong>{completionProject?.client.name}</strong>?
             </p>
 
@@ -638,7 +657,7 @@ export function DashboardClient({
                 </div>
                 {completionHasDpInvoice && completionProject.dpAmount && (
                   <div className="flex justify-between text-emerald-600">
-                    <span>DP Terkirim</span>
+                    <span>Down Payment Billed</span>
                     <span>
                       -
                       {formatCurrency(
@@ -653,7 +672,7 @@ export function DashboardClient({
 
             {completionHasFullInvoice && (
               <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
-                ⚠️ Tagihan Full Payment sudah pernah dibuat untuk proyek ini.
+                ⚠️ A Full Payment invoice has already been generated for this project.
               </p>
             )}
           </div>
@@ -717,6 +736,12 @@ export function DashboardClient({
           hasInvoices={(activeItemProject.invoices?.length ?? 0) > 0}
         />
       )}
+
+      <EmailProviderModal
+        isOpen={!!emailModalData}
+        onClose={() => setEmailModalData(null)}
+        emailData={emailModalData}
+      />
     </div>
   );
 }

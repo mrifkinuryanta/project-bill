@@ -2,6 +2,8 @@ import { LoginForm } from "@/components/login-form";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 export default async function LoginPage() {
   // Check if we need to run initial setup
   const userCount = await prisma.user.count();

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createPaymentLink } from "@/lib/mayar";
+import { getBaseUrl } from "@/lib/utils";
 
 
 export async function POST(
@@ -39,7 +40,12 @@ export async function POST(
       );
     }
 
-    const baseUrl = process.env.APP_URL || "http://localhost:3000";
+    const invoiceAmount = Number(invoice.amount);
+    const taxRate = invoice.project.taxRate ? Number(invoice.project.taxRate) : 0;
+    const taxAmount = invoiceAmount * (taxRate / 100);
+    const grandTotal = invoiceAmount + taxAmount;
+
+    const baseUrl = getBaseUrl();
 
     let expiredAtDate: string | undefined;
     if (invoice.dueDate) {
@@ -54,11 +60,6 @@ export async function POST(
         expiredAtDate = due.toISOString();
       }
     }
-
-    const invoiceAmount = Number(invoice.amount);
-    const taxRate = invoice.project.taxRate ? Number(invoice.project.taxRate) : 0;
-    const taxAmount = invoiceAmount * (taxRate / 100);
-    const grandTotal = invoiceAmount + taxAmount;
 
     // Prepare payload for Mayar API `create payment link`
     const mayarRes = await createPaymentLink({
