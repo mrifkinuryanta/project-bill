@@ -209,15 +209,24 @@ Navigate to [http://localhost:3000/setup](http://localhost:3000/setup) to create
 
 ---
 
-## 🔄 Recurring Invoices (Cron Setup)
+## 🔄 Cron Jobs Setup
 
-To enable automated recurring invoice generation, set up an external cron job to call the endpoint **daily**:
+ProjectBill uses two daily cron endpoints to automate billing operations. Set up an external scheduler to call **both** endpoints daily:
 
 ```bash
-# Example: cURL with Bearer token
-curl -X POST https://your-domain.com/api/cron/recurring-invoices \
+# 1. Recurring Invoice Generation — generates invoices from active retainer templates
+curl -X GET https://your-domain.com/api/cron/recurring-invoices \
+  -H "Authorization: Bearer YOUR_CRON_SECRET"
+
+# 2. Payment Reminders — sends pre-due, overdue, and late fee reminder emails
+curl -X GET https://your-domain.com/api/cron/reminders \
   -H "Authorization: Bearer YOUR_CRON_SECRET"
 ```
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/cron/recurring-invoices` | `GET` | Generates invoices from active recurring templates and sends notification emails |
+| `/api/cron/reminders` | `GET` | Sends pre-due (3 days before), overdue (D+1, D+3), and late fee (D+7, +5%) reminders |
 
 **Recommended services:** [cron-job.org](https://cron-job.org), Vercel Cron, or a system crontab.
 
