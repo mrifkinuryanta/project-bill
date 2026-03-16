@@ -45,14 +45,14 @@ export async function GET() {
             },
             limits,
             usage: {
-                clients: { current: clientCount, limit: limits.maxClients },
-                activeProjects: { current: projectCount, limit: limits.maxActiveProjects },
-                invoicesPerMonth: { current: sub.invoicesCreated, limit: limits.maxInvoicesPerMonth },
-                emailsPerMonth: { current: sub.emailsSent, limit: limits.maxEmailsPerMonth },
-                paymentLinksPerMonth: { current: sub.paymentLinksUsed, limit: limits.maxPaymentLinksPerMonth },
-                recurringTemplates: { current: recurringCount, limit: limits.maxRecurringTemplates },
-                sowTemplates: { current: sowCount, limit: limits.maxSowTemplates },
-                teamMembers: { current: teamCount, limit: limits.maxTeamMembers },
+                clients: { current: clientCount, limit: limits.clients },
+                activeProjects: { current: projectCount, limit: limits.activeProjects },
+                invoicesPerMonth: { current: sub.invoicesCreated, limit: limits.invoicesPerMonth },
+                emailsPerMonth: { current: sub.emailsSent, limit: limits.emailsPerMonth },
+                paymentLinksPerMonth: { current: sub.paymentLinksUsed, limit: limits.paymentLinksPerMonth },
+                recurringTemplates: { current: recurringCount, limit: limits.recurringTemplates },
+                sowTemplates: { current: sowCount, limit: limits.sowTemplates },
+                teamMembers: { current: teamCount, limit: limits.teamMembers },
             },
         });
     } catch (error) {

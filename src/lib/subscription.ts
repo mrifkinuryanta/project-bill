@@ -9,40 +9,40 @@ export type PlanType = "starter" | "pro" | "business";
 // Define the limits for each plan
 export const PLAN_LIMITS = {
   starter: {
-    maxClients: 5,
-    maxActiveProjects: 5,
-    maxInvoicesPerMonth: 15,
-    maxEmailsPerMonth: 30,
-    maxPaymentLinksPerMonth: 10,
-    maxRecurringTemplates: 1,
-    maxSowTemplates: 2,
-    maxTeamMembers: 1,
+    clients: 5,
+    activeProjects: 5,
+    invoicesPerMonth: 15,
+    emailsPerMonth: 30,
+    paymentLinksPerMonth: 10,
+    recurringTemplates: 1,
+    sowTemplates: 2,
+    teamMembers: 1,
     pdfAutoDelivery: false,
     advancedReporting: false,
     watermark: true,
   },
   pro: {
-    maxClients: Infinity,
-    maxActiveProjects: Infinity,
-    maxInvoicesPerMonth: Infinity,
-    maxEmailsPerMonth: 500,
-    maxPaymentLinksPerMonth: Infinity,
-    maxRecurringTemplates: Infinity,
-    maxSowTemplates: Infinity,
-    maxTeamMembers: 5,
+    clients: Infinity,
+    activeProjects: Infinity,
+    invoicesPerMonth: Infinity,
+    emailsPerMonth: 500,
+    paymentLinksPerMonth: Infinity,
+    recurringTemplates: Infinity,
+    sowTemplates: Infinity,
+    teamMembers: 5,
     pdfAutoDelivery: true,
     advancedReporting: true,
     watermark: false,
   },
   business: {
-    maxClients: Infinity,
-    maxActiveProjects: Infinity,
-    maxInvoicesPerMonth: Infinity,
-    maxEmailsPerMonth: 2000,
-    maxPaymentLinksPerMonth: Infinity,
-    maxRecurringTemplates: Infinity,
-    maxSowTemplates: Infinity,
-    maxTeamMembers: 15,
+    clients: Infinity,
+    activeProjects: Infinity,
+    invoicesPerMonth: Infinity,
+    emailsPerMonth: 2000,
+    paymentLinksPerMonth: Infinity,
+    recurringTemplates: Infinity,
+    sowTemplates: Infinity,
+    teamMembers: 15,
     pdfAutoDelivery: true,
     advancedReporting: true,
     watermark: false,
@@ -159,7 +159,7 @@ export async function checkLimit(
       });
       break;
     case "sowTemplates":
-      current = await prisma.sowTemplate.count();
+      current = await prisma.sOWTemplate.count();
       break;
     case "teamMembers":
       current = await prisma.user.count();
