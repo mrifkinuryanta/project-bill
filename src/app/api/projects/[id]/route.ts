@@ -112,6 +112,19 @@ export async function PATCH(
         );
       }
     }
+    
+    // Phase 4.3: Subscription Limit Check for Reactivation
+    // If the project was "done" and is now being moved to an active state, check limit.
+    if (existing.status === "done" && status !== undefined && status !== "done") {
+        const { checkLimit } = await import("@/lib/subscription");
+        const limitCheck = await checkLimit(session.user.id, "activeProjects");
+        if (!limitCheck.allowed) {
+            return NextResponse.json(
+                { error: "Cannot reactivate project. Active projects limit reached.", limitCheck },
+                { status: 403 }
+            );
+        }
+    }
 
     const project = await prisma.project.update({
       where: { id },

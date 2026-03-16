@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { UpgradeDialog } from "@/components/subscription/upgrade-dialog";
 import {
     Card,
     CardContent,
@@ -77,6 +78,8 @@ export function RecurringInvoicesClient({
 }) {
     const [recurringInvoices, setRecurringInvoices] = useState<RecurringInvoice[]>(initialRecurringInvoices);
     const [open, setOpen] = useState(false);
+    const [isUpgradeDialogOpen, setIsUpgradeDialogOpen] = useState(false);
+    const [currentLimit, setCurrentLimit] = useState<number>(0);
     const [loading, setLoading] = useState(false);
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
@@ -114,7 +117,7 @@ export function RecurringInvoicesClient({
         setIsActive(true);
     };
 
-    const handleOpenDialog = (ri?: RecurringInvoice) => {
+    const handleOpenDialog = async (ri?: RecurringInvoice) => {
         if (ri) {
             setId(ri.id);
             setProjectId(ri.projectId);
@@ -126,10 +129,26 @@ export function RecurringInvoicesClient({
             setEndDate(ri.endDate ? format(new Date(ri.endDate), "yyyy-MM-dd") : "");
             setDescription(ri.description || "");
             setIsActive(ri.isActive);
+            setOpen(true);
         } else {
+            // Check limit before opening create dialog
+            try {
+                const res = await fetch("/api/subscription/check?resource=recurringTemplates");
+                if (res.ok) {
+                    const check = await res.json();
+                    if (!check.allowed) {
+                        setCurrentLimit(check.limit);
+                        setIsUpgradeDialogOpen(true);
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to check subscription limit:", error);
+            }
+            
             resetForm();
+            setOpen(true);
         }
-        setOpen(true);
     };
 
     const handleToggleActive = async (ri: RecurringInvoice) => {
@@ -582,6 +601,13 @@ export function RecurringInvoicesClient({
                     />
                 </CardContent>
             </Card>
+
+            <UpgradeDialog
+                isOpen={isUpgradeDialogOpen}
+                onOpenChange={setIsUpgradeDialogOpen}
+                resourceName="Recurring Invoices"
+                limit={currentLimit}
+            />
         </>
     );
 }

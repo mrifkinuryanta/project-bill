@@ -11,8 +11,21 @@ export async function sendInvoiceEmail(
   customNotes?: string | null
 ) {
   const session = await auth();
-  if (!session) throw new Error("Unauthorized");
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const { checkLimit, incrementUsage } = await import("@/lib/subscription");
+
   try {
+    // --- Subscription Gate Check ---
+    const limitCheck = await checkLimit(session.user.id, "emailsPerMonth");
+    if (!limitCheck.allowed) {
+      return { 
+        success: false, 
+        error: "Monthly email limit reached. Please upgrade your plan.",
+        limitCheck 
+      };
+    }
+    // -------------------------------
     const invoice = await prisma.invoice.findUnique({
       where: { id: invoiceId },
       include: {
@@ -78,6 +91,9 @@ export async function sendInvoiceEmail(
              where: { id: invoiceId },
              data: { emailStatus: 'sent' }
           });
+          // --- Subscription Usage Increment ---
+          await incrementUsage(session.user.id, "emailsSent");
+          // ------------------------------------
         }
 
         if (!result.success && result.error) {

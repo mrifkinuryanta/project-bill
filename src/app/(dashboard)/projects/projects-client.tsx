@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { UpgradeDialog } from "@/components/subscription/upgrade-dialog";
 import {
   Card,
   CardContent,
@@ -98,6 +99,8 @@ export function ProjectsClient({
 
   // Project Form State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isUpgradeDialogOpen, setIsUpgradeDialogOpen] = useState(false);
+  const [currentLimit, setCurrentLimit] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
@@ -158,7 +161,7 @@ export function ProjectsClient({
       .catch(err => console.error("Failed to load templates:", err));
   }, []);
 
-  const handleOpenDialog = (project?: Project) => {
+  const handleOpenDialog = async (project?: Project) => {
     if (project) {
       setEditingId(project.id);
       setTitle(project.title);
@@ -180,7 +183,27 @@ export function ProjectsClient({
       setIsSowLocked(paid);
       setIsSowSigned(!!project.termsAcceptedAt);
       setHasInvoices((project.invoices && project.invoices.length > 0) ? true : false);
+      setNewItemDesc("");
+      setNewItemQty("");
+      setNewItemRate("");
+      setNewItemPrice("");
+      setIsDialogOpen(true);
     } else {
+      // Check limit before opening create dialog
+      try {
+        const res = await fetch("/api/subscription/check?resource=activeProjects");
+        if (res.ok) {
+          const check = await res.json();
+          if (!check.allowed) {
+            setCurrentLimit(check.limit);
+            setIsUpgradeDialogOpen(true);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("Failed to check subscription limit:", error);
+      }
+
       setEditingId(null);
       setTitle("");
       setClientId("");
@@ -196,12 +219,12 @@ export function ProjectsClient({
       setIsSowLocked(false);
       setIsSowSigned(false);
       setHasInvoices(false);
+      setNewItemDesc("");
+      setNewItemQty("");
+      setNewItemRate("");
+      setNewItemPrice("");
+      setIsDialogOpen(true);
     }
-    setNewItemDesc("");
-    setNewItemQty("");
-    setNewItemRate("");
-    setNewItemPrice("");
-    setIsDialogOpen(true);
   };
 
   const formatCurrency = (amount: string | number, currencyStr: string) => {
@@ -1303,6 +1326,14 @@ export function ProjectsClient({
           }
           setItemRemoveConfirm(null);
         }}
+      />
+
+      {/* Upgrade Dialog */}
+      <UpgradeDialog
+        isOpen={isUpgradeDialogOpen}
+        onOpenChange={setIsUpgradeDialogOpen}
+        resourceName="Active Projects"
+        limit={currentLimit}
       />
     </div >
   );
