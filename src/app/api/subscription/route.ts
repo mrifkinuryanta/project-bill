@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { getSubscription, isSelfHosted, PLAN_LIMITS, type PlanType } from "@/lib/subscription";
+import { getSubscription, checkTrialStatus, isSelfHosted, PLAN_LIMITS, type PlanType } from "@/lib/billing/subscription";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
@@ -22,13 +22,14 @@ export async function GET() {
         }
 
         const sub = await getSubscription(session.user.id);
+        const trialStatus = await checkTrialStatus(session.user.id);
         const planName = sub.plan as PlanType;
         const limits = PLAN_LIMITS[planName] || PLAN_LIMITS.starter;
 
         // Get current counts for static resources
         const [clientCount, projectCount, recurringCount, sowCount, teamCount] = await Promise.all([
             prisma.client.count({ where: { isArchived: false } }),
-            prisma.project.count({ where: { status: { not: "done" } } }),
+            prisma.project.count({ where: { status: { not: "DONE" } } }),
             prisma.recurringInvoice.count({ where: { isActive: true } }),
             prisma.sOWTemplate.count(),
             prisma.user.count(),
@@ -42,6 +43,10 @@ export async function GET() {
                 status: sub.status,
                 currentPeriodStart: sub.currentPeriodStart,
                 currentPeriodEnd: sub.currentPeriodEnd,
+                trialEndsAt: sub.trialEndsAt,
+                cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
+                isTrialing: trialStatus.isTrialing,
+                trialDaysLeft: trialStatus.daysLeft,
             },
             limits,
             usage: {
@@ -79,7 +84,7 @@ export async function PUT(request: Request) {
             where: { id: session.user.id },
         });
 
-        if (currentUser?.role !== "admin") {
+        if (currentUser?.role !== "ADMIN") {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 

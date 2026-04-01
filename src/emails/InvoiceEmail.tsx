@@ -57,7 +57,7 @@ export const InvoiceEmail = ({
       </Text>
 
       <InvoiceCard
-        badgeType="unpaid"
+        badgeType="UNPAID"
         amount={amount}
         clientName={clientName}
         projectName={projectName}

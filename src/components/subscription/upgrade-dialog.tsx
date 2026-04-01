@@ -32,7 +32,7 @@ export function UpgradeDialog({ isOpen, onOpenChange, resourceName, limit }: Upg
             <DialogTitle>Limit Reached</DialogTitle>
           </div>
           <DialogDescription className="text-base text-foreground">
-            You have reached the limit for <strong>{resourceName}</strong> on your current plan (maximum {limit}).
+            You have reached the limit for <strong>{resourceName}</strong> on your current plan (maximum {limit === Infinity || limit > 999999 ? "unlimited" : limit}).
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 text-sm text-muted-foreground">

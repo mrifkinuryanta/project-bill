@@ -1,5 +1,5 @@
-import { prisma } from "./prisma";
-import { env } from "./env";
+import { prisma } from "../prisma";
+import { env } from "../env";
 import { addMonths } from "date-fns";
 import type { Subscription } from "@prisma/client";
 
@@ -49,6 +49,13 @@ export const PLAN_LIMITS = {
   },
 } as const;
 
+// Pricing
+export const PLAN_PRICING = {
+  starter: { monthly: 0, yearly: 0 },
+  pro:     { monthly: 79_000, yearly: 790_000 },
+  business:{ monthly: 179_000, yearly: 1_790_000 },
+} as const;
+
 // ── Environment Checks ────────────────────────────────────────
 
 export function isSelfHosted(): boolean {
@@ -63,7 +70,7 @@ export function isManagedCloud(): boolean {
 
 /**
  * Gets or creates the default subscription for a user.
- * In a real billing flow, this would be tied to Stripe/Mayar customers.
+ * Automatically gives a 14-day Pro trial for new users.
  */
 export async function getSubscription(userId: string): Promise<Subscription> {
   const sub = await prisma.subscription.findUnique({
@@ -72,14 +79,66 @@ export async function getSubscription(userId: string): Promise<Subscription> {
 
   if (sub) return sub;
 
-  // Create default starter subscription if it doesn't exist
+  // Create default 14-day trial for "pro" plan if it doesn't exist
+  const now = new Date();
+  const trialEnds = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000); // 14 days
+
   return prisma.subscription.create({
     data: {
       userId,
+      plan: "pro",
+      status: "TRIALING",
+      trialStartedAt: now,
+      trialEndsAt: trialEnds,
+      currentPeriodStart: now,
+      currentPeriodEnd: trialEnds,
+    },
+  });
+}
+
+// ── Trial & Lifecycle ─────────────────────────────────────────
+
+export async function checkTrialStatus(userId: string): Promise<{ isTrialing: boolean; daysLeft: number }> {
+  const sub = await getSubscription(userId);
+  if (sub.status !== "TRIALING" || !sub.trialEndsAt) {
+    return { isTrialing: false, daysLeft: 0 };
+  }
+
+  const now = new Date();
+  const diffTime = sub.trialEndsAt.getTime() - now.getTime();
+  const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (daysLeft <= 0) {
+    return { isTrialing: false, daysLeft: 0 };
+  }
+
+  return { isTrialing: true, daysLeft };
+}
+
+export async function downgradeExpiredTrials(): Promise<{ count: number }> {
+  const now = new Date();
+  const result = await prisma.subscription.updateMany({
+    where: {
+      status: "TRIALING",
+      trialEndsAt: { lt: now },
+    },
+    data: {
       plan: "starter",
-      status: "active",
-      currentPeriodStart: new Date(),
-      currentPeriodEnd: addMonths(new Date(), 1), // Auto-renews next month
+      status: "ACTIVE",
+      trialEndsAt: null,
+      currentPeriodStart: now,
+      currentPeriodEnd: addMonths(now, 1),
+    },
+  });
+
+  return { count: result.count };
+}
+
+export async function cancelSubscription(userId: string): Promise<Subscription> {
+  return prisma.subscription.update({
+    where: { userId },
+    data: {
+      cancelAtPeriodEnd: true,
     },
   });
 }
@@ -149,7 +208,7 @@ export async function checkLimit(
     case "activeProjects":
       current = await prisma.project.count({
         where: {
-          status: { not: "done" }, // Only count active ones
+          status: { not: "DONE" }, // Only count active ones
         },
       });
       break;
@@ -219,13 +278,19 @@ export async function incrementUsage(
  * Resets all subscription counters. Intended to be run via cron on the 1st of every month.
  */
 export async function resetAllUsageCounters(): Promise<{ count: number }> {
+  const now = new Date();
   const result = await prisma.subscription.updateMany({
+    where: {
+      status: {
+        in: ["ACTIVE", "TRIALING"],
+      },
+    },
     data: {
       emailsSent: 0,
       invoicesCreated: 0,
       paymentLinksUsed: 0,
-      currentPeriodStart: new Date(),
-      currentPeriodEnd: addMonths(new Date(), 1),
+      currentPeriodStart: now,
+      currentPeriodEnd: addMonths(now, 1),
     },
   });
 

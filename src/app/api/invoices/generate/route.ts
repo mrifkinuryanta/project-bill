@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    if (project.status !== "done") {
+    if (project.status !== "DONE") {
       return NextResponse.json(
         { error: "Project is not marked as done yet." },
         { status: 400 },
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     }
 
     const existingInvoice = project.invoices.find(
-      (i) => i.type === "full_payment",
+      (i) => i.type === "FULL_PAYMENT",
     );
     if (existingInvoice) {
       if (existingInvoice.paymentLink) {
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     }
 
     // --- Subscription Gate Check ---
-    const { checkLimit, incrementUsage } = await import("@/lib/subscription");
+    const { checkLimit, incrementUsage } = await import("@/lib/billing/subscription");
     const limitCheck = await checkLimit(session.user.id, "invoicesPerMonth");
     if (!limitCheck.allowed) {
       return NextResponse.json(
@@ -80,9 +80,10 @@ export async function POST(request: Request) {
       data: {
         invoiceNumber,
         projectId: project.id,
-        type: "full_payment",
+        type: "FULL_PAYMENT",
         amount: amountToPay,
-        status: "unpaid",
+        notes: `Full Payment for ${project.title}`,
+        status: "UNPAID",
         dueDate,
         paymentLink: paymentLinkRes ? paymentLinkRes.link : null,
         paymentId: paymentLinkRes ? (paymentLinkRes.id || null) : null,

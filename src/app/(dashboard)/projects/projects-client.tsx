@@ -39,6 +39,7 @@ import { Badge } from "@/components/ui/badge";
 import { Pencil, Trash2, Plus, FileText, Maximize2, NotepadTextDashed, Info } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { formatEnum } from "@/lib/utils";
 import { NumericFormat } from "react-number-format";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import ReactMarkdown from "react-markdown";
@@ -148,9 +149,10 @@ export function ProjectsClient({
   // Invoice Form State
   const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
   const [invoiceProject, setInvoiceProject] = useState<Project | null>(null);
-  const [invoiceType, setInvoiceType] = useState<"dp" | "full_payment">(
-    "full_payment",
+  const [invoiceType, setInvoiceType] = useState<"DP" | "FULL_PAYMENT">(
+    "FULL_PAYMENT",
   );
+  const [invoiceNotes, setInvoiceNotes] = useState("");
 
   const [sowTemplates, setSowTemplates] = useState<{ id: string, name: string, content: string }[]>([]);
 
@@ -179,7 +181,7 @@ export function ProjectsClient({
       setTaxName(project.taxName || "");
       setTaxRate(project.taxRate ? String(project.taxRate) : "");
       setItems(project.items || []);
-      const paid = project.invoices?.some((i) => i.status === "paid") || false;
+      const paid = project.invoices?.some((i) => i.status === "PAID") || false;
       setIsSowLocked(paid);
       setIsSowSigned(!!project.termsAcceptedAt);
       setHasInvoices((project.invoices && project.invoices.length > 0) ? true : false);
@@ -236,12 +238,12 @@ export function ProjectsClient({
   };
 
   const getInvoiceCalculation = (project: Project) => {
-    const hasDpInvoice = project.invoices?.some((inv) => inv.type === "dp");
+    const hasDpInvoice = project.invoices?.some((inv) => inv.type === "DP");
     const hasFullInvoice = project.invoices?.some(
-      (inv) => inv.type === "full_payment",
+      (inv) => inv.type === "FULL_PAYMENT",
     );
     const isDpPaid = project.invoices?.some(
-      (inv) => inv.type === "dp" && inv.status === "paid",
+      (inv) => inv.type === "DP" && inv.status === "PAID",
     );
 
     let fullPaymentAmount = Number(project.totalPrice);
@@ -256,16 +258,23 @@ export function ProjectsClient({
     setInvoiceProject(project);
     const calc = getInvoiceCalculation(project);
 
+    let defaultType: "DP" | "FULL_PAYMENT";
     if (
       !calc.hasDpInvoice &&
       project.dpAmount &&
       Number(project.dpAmount) > 0
     ) {
-      setInvoiceType("dp");
+      defaultType = "DP";
     } else {
-      setInvoiceType("full_payment");
+      defaultType = "FULL_PAYMENT";
     }
 
+    setInvoiceType(defaultType);
+    setInvoiceNotes(
+      defaultType === "DP"
+        ? `Down Payment for ${project.title}`
+        : `Full Payment for ${project.title}`
+    );
     setIsInvoiceDialogOpen(true);
   };
 
@@ -340,7 +349,7 @@ export function ProjectsClient({
     try {
       const calc = getInvoiceCalculation(invoiceProject);
       const amount =
-        invoiceType === "dp"
+        invoiceType === "DP"
           ? invoiceProject.dpAmount
           : String(calc.fullPaymentAmount);
 
@@ -351,6 +360,7 @@ export function ProjectsClient({
           projectId: invoiceProject.id,
           type: invoiceType,
           amount,
+          notes: invoiceNotes || null,
         }),
       });
 
@@ -414,7 +424,7 @@ export function ProjectsClient({
               <SelectItem value="all">All Statuses</SelectItem>
               {uniqueStatuses.map((status) => (
                 <SelectItem key={status} value={status}>
-                  {status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                  {formatEnum(status)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -891,9 +901,12 @@ export function ProjectsClient({
                                 <input
                                   type="radio"
                                   name="invoiceType"
-                                  value="dp"
-                                  checked={invoiceType === "dp"}
-                                  onChange={() => setInvoiceType("dp")}
+                                  value="DP"
+                                  checked={invoiceType === "DP"}
+                                  onChange={() => {
+                                    setInvoiceType("DP");
+                                    setInvoiceNotes(`Down Payment for ${invoiceProject.title}`);
+                                  }}
                                   className="w-4 h-4"
                                 />
                                 <div className="flex-1">
@@ -915,9 +928,12 @@ export function ProjectsClient({
                               <input
                                 type="radio"
                                 name="invoiceType"
-                                value="full_payment"
-                                checked={invoiceType === "full_payment"}
-                                onChange={() => setInvoiceType("full_payment")}
+                                value="FULL_PAYMENT"
+                                checked={invoiceType === "FULL_PAYMENT"}
+                                onChange={() => {
+                                  setInvoiceType("FULL_PAYMENT");
+                                  setInvoiceNotes(`Full Payment for ${invoiceProject.title}`);
+                                }}
                                 className="w-4 h-4"
                               />
                               <div className="flex-1">
@@ -933,6 +949,21 @@ export function ProjectsClient({
                               </div>
                             </label>
                           )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="invoiceNotes">Notes (Optional)</Label>
+                          <Textarea
+                            id="invoiceNotes"
+                            value={invoiceNotes}
+                            onChange={(e) => setInvoiceNotes(e.target.value)}
+                            placeholder="Add notes for this invoice..."
+                            rows={2}
+                            className="text-sm resize-none"
+                          />
+                          <p className="text-[11px] text-muted-foreground">
+                            This note will appear on the invoice sent to the client.
+                          </p>
                         </div>
                       </div>
                     );
@@ -1078,7 +1109,7 @@ export function ProjectsClient({
                   <div className="flex justify-between items-start">
                     <span className="truncate pr-4 font-bold">{project.title}</span>
                     <Badge variant="secondary" className="capitalize shrink-0 text-[10px] px-2 py-0">
-                      {project.status.replace("_", " ")}
+                      {formatEnum(project.status)}
                     </Badge>
                   </div>
                   <span className="text-sm font-normal text-muted-foreground truncate">{project.client.name}</span>
@@ -1238,7 +1269,7 @@ export function ProjectsClient({
                     )}
                   </TableCell>
                   <TableCell className="capitalize">
-                    {project.status.replace("_", " ")}
+                    {formatEnum(project.status)}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button

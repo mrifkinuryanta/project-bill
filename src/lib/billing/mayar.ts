@@ -1,6 +1,6 @@
 import crypto from "crypto";
-import { prisma } from "./prisma";
-import { decrypt } from "./crypto";
+import { prisma } from "../prisma";
+import { decrypt } from "../crypto";
 
 const MAYAR_API_URL = "https://api.mayar.id/hl/v1";
 
@@ -29,7 +29,7 @@ export async function createPaymentLink(
   // If the user's ID is known contextually, ideally we pass it in CreatePaymentLinkParams
   // We'll temporarily use the first admin user's ID for cron jobs/system actions if not passed.
   // In a robust implementation, the user ID should always be passed down.
-  const adminUser = await prisma.user.findFirst({ where: { role: "admin" } });
+  const adminUser = await prisma.user.findFirst({ where: { role: "ADMIN" } });
   // Currently the API doesn't pass userId to createPaymentLink, relying on system admin for testing.
   // So we don't strictly enforce gate here unless we change the signature. 
   // Let's modify the signature to accept userId below (requiring refactor of callers).

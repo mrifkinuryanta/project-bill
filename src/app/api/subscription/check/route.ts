@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
-import { checkLimit } from "@/lib/subscription";
+import { checkLimit } from "@/lib/billing/subscription";
 
 export async function GET(req: Request) {
   try {
@@ -17,10 +17,12 @@ export async function GET(req: Request) {
       return new NextResponse("Resource parameter is required", { status: 400 });
     }
 
-    // Validate resource is a key of PLAN_LIMITS (checkLimit handles the exact type, but we pass it as string here)
-    // The type `Parameters<typeof checkLimit>[1]` restricts to valid keys.
-    // We cast it to any and let checkLimit handle throwing or false if it's somehow invalid.
-    // But ideally we just pass it as the correct type.
+    // Validate resource is a valid PLAN_LIMITS key
+    const { PLAN_LIMITS } = await import("@/lib/billing/subscription");
+    if (!(resource in PLAN_LIMITS.starter)) {
+      return new NextResponse("Invalid resource", { status: 400 });
+    }
+
     const result = await checkLimit(session.user.id, resource as Parameters<typeof checkLimit>[1]);
 
     return NextResponse.json(result);

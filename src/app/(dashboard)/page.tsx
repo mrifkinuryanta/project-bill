@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { OverviewCharts } from "@/components/dashboard/overview-charts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, FileText, Wallet, Clock } from "lucide-react";
+import { formatEnum } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -13,16 +14,16 @@ export default async function DashboardPage() {
         orderBy: { createdAt: "desc" },
       }),
       prisma.invoice.count({
-        where: { status: "unpaid" },
+        where: { status: "UNPAID" },
       }),
       prisma.client.count(),
       prisma.invoice.aggregate({
         _sum: { amount: true },
-        where: { status: "paid", project: { currency: "IDR" } }
+        where: { status: "PAID", project: { currency: "IDR" } }
       }),
       prisma.invoice.aggregate({
         _sum: { amount: true },
-        where: { status: "unpaid", project: { currency: "IDR" } }
+        where: { status: "UNPAID", project: { currency: "IDR" } }
       })
     ]);
 
@@ -49,11 +50,11 @@ export default async function DashboardPage() {
     revenueData = revenueData.filter((d) => d.total > 0);
   }
 
-  const statuses = ["to_do", "in_progress", "review", "done"];
+  const statuses = ["TO_DO", "IN_PROGRESS", "REVIEW", "DONE"];
   let statusCounts = statuses
     .map((s) => {
       return {
-        name: s.replace("_", " ").toUpperCase(),
+        name: formatEnum(s).toUpperCase(),
         value: projectsRaw.filter((p) => p.status === s).length,
       };
     });

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { RateLimiter } from "@/lib/rate-limit";
-import { resetAllUsageCounters } from "@/lib/subscription";
+import { resetAllUsageCounters } from "@/lib/billing/subscription";
 
 // Allow 2 cron requests per minute per IP to prevent abusive triggers
 const cronRateLimiter = new RateLimiter({ limit: 2, windowMs: 60 * 1000 });

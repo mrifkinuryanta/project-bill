@@ -13,7 +13,7 @@ export async function sendInvoiceEmail(
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
-  const { checkLimit, incrementUsage } = await import("@/lib/subscription");
+  const { checkLimit, incrementUsage } = await import("@/lib/billing/subscription");
 
   try {
     // --- Subscription Gate Check ---
@@ -61,7 +61,7 @@ export async function sendInvoiceEmail(
     try {
         let result;
 
-        if (invoice.type === "recurring") {
+        if (invoice.type === "RECURRING") {
           result = await sendRecurringInvoiceEmail({
             to: client.email!,
             clientName: client.name,
@@ -89,7 +89,7 @@ export async function sendInvoiceEmail(
         if (result.success && !result.mocked) {
           await prisma.invoice.update({
              where: { id: invoiceId },
-             data: { emailStatus: 'sent' }
+             data: { emailStatus: 'SENT' }
           });
           // --- Subscription Usage Increment ---
           await incrementUsage(session.user.id, "emailsSent");
@@ -105,7 +105,7 @@ export async function sendInvoiceEmail(
            let subject = "";
            let body = "";
 
-           if (invoice.type === "recurring") {
+           if (invoice.type === "RECURRING") {
                subject = project.language === "en"
                    ? `Recurring Invoice [${invoice.invoiceNumber}] for ${project.title} - Action Required`
                    : `Tagihan Rutin [${invoice.invoiceNumber}] untuk ${project.title} - Diperlukan Tindakan`;
@@ -138,7 +138,7 @@ export async function sendInvoiceEmail(
         // Set status to failed
         await prisma.invoice.update({
           where: { id: invoiceId },
-          data: { emailStatus: 'failed' }
+          data: { emailStatus: 'FAILED' }
         });
         return { success: false, error: emailError?.message || "Failed to send email" }
     }

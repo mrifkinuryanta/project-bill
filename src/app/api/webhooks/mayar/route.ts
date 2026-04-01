@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyMayarWebhook } from "@/lib/mayar";
+import { verifyMayarWebhook } from "@/lib/billing/mayar";
 import { generateSowPdfBuffer, generateInvoicePdfBuffer } from "@/lib/pdf-generator";
 import { sendPaymentSuccessEmail } from "@/lib/email";
 import { RateLimiter } from "@/lib/rate-limit";
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     const isPaid =
       eventType === "payment.received" ||
       eventType === "payment.success" ||
-      data.status === "paid" ||
+      data.status === "PAID" ||
       data.data?.status === true;
 
     if (isPaid) {
@@ -53,15 +53,15 @@ export async function POST(request: Request) {
       }
 
       if (invoiceId) {
-        // Atomic Update: Only update if status is still 'unpaid'.
-        // If two webhooks fire instantly, only one transaction matches "unpaid".
+        // Atomic Update: Only update if status is still 'UNPAID'.
+        // If two webhooks fire instantly, only one transaction matches "UNPAID".
         const updateResult = await prisma.invoice.updateMany({
           where: {
             id: invoiceId,
-            status: "unpaid",
+            status: "UNPAID",
           },
           data: {
-            status: "paid",
+            status: "PAID",
             paidAt: new Date(),
             paymentId: data.data?.id || data.transaction_id || data.id,
           },

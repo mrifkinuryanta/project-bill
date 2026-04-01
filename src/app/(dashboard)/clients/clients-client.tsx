@@ -170,7 +170,7 @@ export function ClientsClient({
       const matchesSearch = client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (client.email && client.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (client.phone && client.phone.includes(searchQuery));
-      if (statusFilter === "active" && client.isArchived) return false;
+      if (statusFilter === "ACTIVE" && client.isArchived) return false;
       if (statusFilter === "archived" && !client.isArchived) return false;
       return matchesSearch;
     }
@@ -192,7 +192,7 @@ export function ClientsClient({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Clients</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="ACTIVE">Active</SelectItem>
               <SelectItem value="archived">Archived</SelectItem>
             </SelectContent>
           </Select>

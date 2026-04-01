@@ -6,11 +6,58 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2 } from "lucide-react";
+import { TrialBanner } from "@/components/subscription/trial-banner";
+import { PricingCard } from "@/components/subscription/pricing-card";
+import { toast } from "sonner";
+
+export interface SubscriptionData {
+  mode: "managed" | "self-hosted";
+  subscription: {
+    id: string;
+    plan: string;
+    status: string;
+    currentPeriodStart: string;
+    currentPeriodEnd: string;
+    trialEndsAt: string | null;
+    cancelAtPeriodEnd: boolean;
+    isTrialing: boolean;
+    trialDaysLeft: number;
+  };
+  limits: any;
+  usage: {
+    clients: { current: number; limit: number | null };
+    activeProjects: { current: number; limit: number | null };
+    invoicesPerMonth: { current: number; limit: number | null };
+    emailsPerMonth: { current: number; limit: number | null };
+    paymentLinksPerMonth: { current: number; limit: number | null };
+    recurringTemplates: { current: number; limit: number | null };
+    sowTemplates: { current: number; limit: number | null };
+  };
+}
 
 export function SubscriptionSettingsClient({ isSelfHosted }: { isSelfHosted: boolean }) {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<SubscriptionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  const handleCheckout = async (plan: string) => {
+    setCheckoutLoading(true);
+    try {
+      const res = await fetch("/api/subscription/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan, billing: "MONTHLY" }),
+      });
+      if (!res.ok) throw new Error("Checkout failed");
+      const { checkoutUrl } = await res.json();
+      window.location.href = checkoutUrl;
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to initiate checkout");
+      setCheckoutLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetch("/api/subscription")
@@ -93,9 +140,9 @@ export function SubscriptionSettingsClient({ isSelfHosted }: { isSelfHosted: boo
     return new Date(dateStr).toLocaleDateString("en-US", { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
-  const UsageBar = ({ label, current, limit, isMonthly = false }: { label: string, current: number, limit: number, isMonthly?: boolean }) => {
+  const UsageBar = ({ label, current, limit, isMonthly = false }: { label: string, current: number, limit: number | null, isMonthly?: boolean }) => {
     const isUnlimited = limit === null || limit === undefined || limit > 999999;
-    const percentage = isUnlimited ? 0 : Math.min(100, (current / limit) * 100);
+    const percentage = isUnlimited ? 0 : Math.min(100, (current / limit!) * 100);
     const isNearLimit = !isUnlimited && percentage >= 80;
     const isAtLimit = !isUnlimited && percentage >= 100;
 
@@ -120,6 +167,10 @@ export function SubscriptionSettingsClient({ isSelfHosted }: { isSelfHosted: boo
 
   return (
     <div className="space-y-6">
+      {subscription.isTrialing && (
+        <TrialBanner daysLeft={subscription.trialDaysLeft} />
+      )}
+
       {/* Current Plan Card */}
       <Card className={isPro ? "border-primary shadow-sm" : ""}>
         <CardHeader className="pb-4">
@@ -131,15 +182,15 @@ export function SubscriptionSettingsClient({ isSelfHosted }: { isSelfHosted: boo
                 {isStarter && <Badge variant="secondary" className="ml-2">Free</Badge>}
               </CardTitle>
               <CardDescription>
-                {subscription.status === "active" 
+                {subscription.status === "ACTIVE" 
                   ? `Active until ${formatDate(subscription.currentPeriodEnd)}`
                   : `Status: ${subscription.status}`
                 }
               </CardDescription>
             </div>
             {isStarter && (
-              <Button onClick={() => window.open('mailto:mrndev@example.com?subject=Upgrade to Pro', '_blank')}>
-                Upgrade to Pro
+              <Button onClick={() => handleCheckout("pro")} disabled={checkoutLoading}>
+                {checkoutLoading ? "Processing..." : "Upgrade to Pro"}
               </Button>
             )}
           </div>
@@ -174,6 +225,48 @@ export function SubscriptionSettingsClient({ isSelfHosted }: { isSelfHosted: boo
             <UsageBar label="SOW Templates" current={usage.sowTemplates.current} limit={usage.sowTemplates.limit} />
           </CardContent>
         </Card>
+      </div>
+
+      {/* Available Plans */}
+      <div className="pt-8" id="plans">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold tracking-tight">Upgrade Plan</h2>
+          <p className="text-muted-foreground text-sm">Select the best plan for your growing business.</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <PricingCard
+            plan="starter"
+            title="Starter"
+            description="For freelancers just starting out."
+            price={0}
+            features={["Up to 5 Clients", "Up to 5 Active Projects", "Basic Built-in Templates"]}
+            ctaText={subscription.plan === "starter" ? "Current Plan" : "Downgrade"}
+            loading={checkoutLoading}
+            onCtaClick={() => handleCheckout("starter")}
+          />
+          <PricingCard
+            plan="pro"
+            title="Pro"
+            description="Perfect for growing teams."
+            price={79000}
+            isPopular={true}
+            highlight={true}
+            features={["Unlimited Clients & Projects", "Unlimited Invoices", "Automated PDF Delivery", "No Watermark"]}
+            ctaText={subscription.plan === "pro" && !subscription.isTrialing ? "Current Plan" : "Upgrade to Pro"}
+            loading={checkoutLoading}
+            onCtaClick={() => handleCheckout("pro")}
+          />
+          <PricingCard
+            plan="business"
+            title="Business"
+            description="For agencies requiring scale."
+            price={179000}
+            features={["Include all Pro features", "Up to 15 Team Members", "Priority Support", "Advanced Analytics"]}
+            ctaText={subscription.plan === "business" ? "Current Plan" : "Upgrade to Business"}
+            loading={checkoutLoading}
+            onCtaClick={() => handleCheckout("business")}
+          />
+        </div>
       </div>
     </div>
   );

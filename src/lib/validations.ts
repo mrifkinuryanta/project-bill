@@ -33,9 +33,10 @@ export const projectSchema = z.object({
 
 export const invoiceSchema = z.object({
   projectId: z.string().min(1, "Project ID is required"),
-  type: z.enum(["dp", "full_payment"]),
+  type: z.enum(["DP", "FULL_PAYMENT"]),
   amount: z.coerce.number().positive("Amount must be a positive number"),
   dueDate: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
 });
 
 
@@ -43,7 +44,7 @@ export const recurringInvoiceSchema = z.object({
   projectId: z.string().min(1, "Project ID is required"),
   title: z.string().min(3, "Title must be at least 3 characters"),
   amount: z.coerce.number().positive("Amount must be positive"),
-  frequency: z.enum(["monthly", "weekly", "yearly"]).default("monthly"),
+  frequency: z.enum(["MONTHLY", "WEEKLY", "YEARLY"]).default("MONTHLY"),
   dayOfMonth: z.coerce.number().min(1).max(28).default(1),
   startDate: z.string(),
   endDate: z.string().nullable().optional(),

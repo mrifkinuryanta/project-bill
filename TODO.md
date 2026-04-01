@@ -33,7 +33,53 @@
 
 ## 🏆 Tier 1 — High Impact, High Feasibility
 
-### 1. 🌐 Client Portal (Multitenant Dashboard) — Sprint 17-18
+### 1. 🔐 Casdoor OIDC Integration (Managed Auth) — Sprint 16
+
+> Integrasi Casdoor sebagai OIDC auth provider untuk `DEPLOYMENT_MODE=managed`, sementara tetap menggunakan Credentials auth (email/bcrypt) untuk `self-hosted`.
+> Estimasi: **~13-18 jam (2-3 hari kerja)** | Kompleksitas: **Medium**
+
+#### Phase 1 — Setup & Konfigurasi
+- [ ] Setup Casdoor instance (Docker / cloud hosted)
+- [ ] Konfigurasi Casdoor: buat Application, Organization, dan Roles
+- [ ] Tambah env vars baru di `env.ts`: `CASDOOR_ENDPOINT`, `CASDOOR_CLIENT_ID`, `CASDOOR_CLIENT_SECRET`
+- [ ] Update `.env.example` dengan variabel Casdoor baru
+
+#### Phase 2 — Auth Provider Conditional
+- [ ] Modifikasi `src/auth.ts` — tambah Casdoor sebagai OIDC provider
+- [ ] Implementasi conditional provider: Credentials (self-hosted) vs Casdoor OIDC (managed)
+- [ ] Update `src/auth.config.ts` — pastikan JWT callbacks handle kedua mode (Casdoor user vs local user)
+- [ ] Pindahkan `isSelfHosted()` / `isManagedCloud()` ke utility terpisah (dari `subscription.ts`)
+
+#### Phase 3 — Login Page & UX
+- [ ] Modifikasi `src/components/login-form.tsx` — conditional render:
+  - Self-hosted: form email/password (existing)
+  - Managed: tombol "Login with Casdoor" (OIDC redirect)
+- [ ] Update `src/app/(auth)/login/page.tsx` — handle login mode detection
+- [ ] Update `src/app/(auth)/login/actions.ts` — support Casdoor sign-in action
+- [ ] Modifikasi setup page (`/setup`) — skip atau adjust untuk managed mode
+
+#### Phase 4 — User Provisioning & Sync
+- [ ] Implementasi auto-create `User` record di DB saat pertama login via Casdoor (di NextAuth callback)
+- [ ] Mapping role Casdoor → role ProjectBill (`admin`, `staff`, dll)
+- [ ] Handle user profile sync (name, email) dari Casdoor ke local DB
+- [ ] Pastikan `Subscription` auto-create juga berjalan untuk user Casdoor baru
+
+#### Phase 5 — Route Protection & Middleware
+- [ ] Buat/update middleware untuk consistent auth check di kedua mode
+- [ ] Pastikan API routes (Server Actions) tetap aman di kedua mode
+- [ ] Proteksi Casdoor callback route (`/api/auth/callback/casdoor`)
+
+#### Phase 6 — Testing & Validasi
+- [ ] Unit test: conditional provider logic
+- [ ] E2E test: login flow self-hosted (Credentials)
+- [ ] E2E test: login flow managed (Casdoor OIDC)
+- [ ] E2E test: user provisioning (auto-create user + subscription)
+- [ ] Validasi: logout flow di kedua mode
+- [ ] Update dokumentasi (`ARCHITECTURE.md`, `README.md`)
+
+---
+
+### 2. 🌐 Client Portal (Multitenant Dashboard) — Sprint 17-18
 
 - [ ] Desain model `ClientAuth` (magic link ke email), terpisah dari model `User`
 - [ ] Buat schema Prisma untuk `ClientAuth`
@@ -48,7 +94,7 @@
 - [ ] Proteksi route client portal dengan middleware
 - [ ] Testing end-to-end client portal
 
-### 2. 💳 Partial Payments & Milestone Billing — Sprint 17-18
+### 3. 💳 Partial Payments & Milestone Billing — Sprint 17-18
 
 - [ ] Desain model `PaymentMilestone` (linked to `Project`)
 - [ ] Buat schema Prisma: `name`, `percentage`, `amount`, `status`, `dueDate`, `invoiceId`
@@ -59,7 +105,7 @@
 - [ ] Integrasi milestone status dengan payment flow
 - [ ] Testing partial payment flow
 
-### 3. ⏱️ Time Tracking & Hourly Billing — Sprint 18-19
+### 4. ⏱️ Time Tracking & Hourly Billing — Sprint 18-19
 
 - [ ] Desain model `TimeEntry` (`projectId`, `description`, `startTime`, `endTime`, `duration`, `billable`)
 - [ ] Buat schema Prisma untuk `TimeEntry`
@@ -74,7 +120,7 @@
 
 ## 🥈 Tier 2 — High Impact, Medium Complexity
 
-### 4. 📎 File Attachments & Deliverables (S3/R2) — Sprint 19
+### 5. 📎 File Attachments & Deliverables (S3/R2) — Sprint 19
 
 - [ ] Pilih storage provider (Cloudflare R2 / MinIO / AWS S3)
 - [ ] Setup integrasi S3-compatible storage
@@ -86,7 +132,7 @@
 - [ ] Implementasi lock/unlock logic berdasarkan invoice status
 - [ ] Testing upload, download, dan akses kontrol
 
-### 5. 📊 Advanced Reporting & Export — Sprint 19-20
+### 6. 📊 Advanced Reporting & Export — Sprint 19-20
 
 - [ ] Buat halaman `/reports` dengan filter (tanggal, klien, status)
 - [ ] Implementasi chart: Revenue trend (line chart)
@@ -97,7 +143,7 @@
 - [ ] Implementasi export XLSX
 - [ ] Testing laporan dan export
 
-### 6. 💬 WhatsApp Integration (Notifikasi) — Sprint 20
+### 7. 💬 WhatsApp Integration (Notifikasi) — Sprint 20
 
 - [ ] Pilih WA provider (WhatsApp Business API / Fonnte / Wablas)
 - [ ] Setup integrasi API WA provider
@@ -108,7 +154,7 @@
 - [ ] Implementasi rate limiting khusus untuk WA messages
 - [ ] Testing pengiriman notifikasi WA
 
-### 7. 👥 RBAC Expansion (Staff Roles & Permissions) — Sprint 20-21
+### 8. 👥 RBAC Expansion (Staff Roles & Permissions) — Sprint 20-21
 
 - [ ] Extend `User.role` enum: `owner`, `admin`, `staff`, `viewer`
 - [ ] Update schema Prisma
@@ -122,7 +168,7 @@
 
 ## 🥉 Tier 3 — Medium Impact, Worth Building
 
-### 8. 🌍 Multi-Currency & Stripe Integration — Sprint 21
+### 9. 🌍 Multi-Currency & Stripe Integration — Sprint 21
 
 - [ ] Re-enable USD select di project form
 - [ ] Integrasi Stripe Checkout (payment intent + webhook)
@@ -130,7 +176,7 @@
 - [ ] Tambahkan exchange rate display (optional, manual)
 - [ ] Testing payment flow IDR & USD
 
-### 9. 📧 Email Template Builder (Visual Editor) — Sprint 22
+### 10. 📧 Email Template Builder (Visual Editor) — Sprint 22
 
 - [ ] Desain UI editor template email (drag-and-drop / field-based) di `/settings/email-templates`
 - [ ] Store template config di Settings (JSON field)
@@ -138,7 +184,7 @@
 - [ ] Buat preview mode sebelum save
 - [ ] Testing customized email output
 
-### 10. 📱 Progressive Web App (PWA) — Sprint 22
+### 11. 📱 Progressive Web App (PWA) — Sprint 22
 
 - [ ] Setup PWA (`next-pwa` / manual Service Worker)
 - [ ] Buat `manifest.json` dengan icon dan splash screen
@@ -146,7 +192,7 @@
 - [ ] Buat offline fallback page
 - [ ] Testing installability dan offline mode
 
-### 11. 📋 Activity Log / Timeline — Sprint 23
+### 12. 📋 Activity Log / Timeline — Sprint 23
 
 - [ ] Desain model `ActivityLog` (atau extend `AuditLog`)
 - [ ] Buat schema Prisma
@@ -155,7 +201,7 @@
 - [ ] Implementasi auto-capture events dari Server Actions
 - [ ] Testing timeline per proyek
 
-### 12. 🔄 Expense Tracking & Profit Calculator — Sprint 23-24
+### 13. 🔄 Expense Tracking & Profit Calculator — Sprint 23-24
 
 - [ ] Desain model `Expense` (`projectId`, `description`, `amount`, `category`, `date`, `receipt`)
 - [ ] Buat schema Prisma
@@ -169,29 +215,29 @@
 
 ## 💡 Tier 4 — Nice to Have / Long-term Vision
 
-### 13. 🤖 AI-Powered Features — Sprint 24
+### 14. 🤖 AI-Powered Features — Sprint 24
 
 - [ ] Smart Pricing Suggestion: suggest harga per scope item berdasarkan histori invoice
 - [ ] Invoice Copy Generator: AI-generated email copy berdasarkan konteks invoice
 - [ ] Project Scope Estimator: AI-powered man-hours estimation
 
-### 14. 📊 Client Satisfaction Survey
+### 15. 📊 Client Satisfaction Survey
 
 - [ ] Auto-kirim survey (NPS-style) setelah proyek selesai
 - [ ] Track satisfaction score di dashboard
 
-### 15. 🔗 Third-Party Integrations
+### 16. 🔗 Third-Party Integrations
 
 - [ ] Export ke format akuntansi (Jurnal.id / Xero / QuickBooks)
 - [ ] Sync 2-arah dengan Trello / Notion
 - [ ] Google Calendar sync untuk deadline proyek
 
-### 16. 🌐 Multi-Language Dashboard
+### 17. 🌐 Multi-Language Dashboard
 
 - [ ] Full i18n untuk dashboard admin (ID / EN)
 - [ ] Toggle bahasa di sidebar
 
-### 17. 📈 Client Insights Dashboard
+### 18. 📈 Client Insights Dashboard
 
 - [ ] Revenue per client (lifetime value)
 - [ ] Payment behavior analysis (average days to pay)

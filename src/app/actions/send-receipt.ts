@@ -21,7 +21,7 @@ export async function sendReceiptEmail(invoiceId: string) {
       }
     })
 
-    if (!invoice || !invoice.project.client.email || invoice.status !== "paid") {
+    if (!invoice || !invoice.project.client.email || invoice.status !== "PAID") {
       throw new Error("Invoice not found or not paid")
     }
 

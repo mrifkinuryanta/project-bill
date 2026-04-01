@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { SubscriptionSettingsClient } from "./subscription-settings-client";
-import { isSelfHosted } from "@/lib/subscription";
+import { isSelfHosted } from "@/lib/billing/subscription";
 
 export default async function SubscriptionSettingsPage() {
   const session = await auth();

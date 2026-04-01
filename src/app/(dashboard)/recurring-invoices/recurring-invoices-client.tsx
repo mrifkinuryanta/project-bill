@@ -59,7 +59,7 @@ interface RecurringInvoice {
     projectId: string;
     title: string;
     amount: string;
-    frequency: "monthly" | "weekly" | "yearly";
+    frequency: "MONTHLY" | "WEEKLY" | "YEARLY";
     dayOfMonth: number;
     startDate: string;
     endDate: string | null;
@@ -89,7 +89,7 @@ export function RecurringInvoicesClient({
     const [projectId, setProjectId] = useState("");
     const [title, setTitle] = useState("");
     const [amount, setAmount] = useState("");
-    const [frequency, setFrequency] = useState<"monthly" | "weekly" | "yearly">("monthly");
+    const [frequency, setFrequency] = useState<"MONTHLY" | "WEEKLY" | "YEARLY">("MONTHLY");
     const [dayOfMonth, setDayOfMonth] = useState<number>(1);
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
@@ -109,7 +109,7 @@ export function RecurringInvoicesClient({
         setProjectId("");
         setTitle("");
         setAmount("");
-        setFrequency("monthly");
+        setFrequency("MONTHLY");
         setDayOfMonth(1);
         setStartDate(format(new Date(), "yyyy-MM-dd"));
         setEndDate("");
@@ -255,7 +255,7 @@ export function RecurringInvoicesClient({
                               ri.project.client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                               ri.project.title.toLowerCase().includes(searchQuery.toLowerCase());
         
-        if (statusFilter === "active") return matchesSearch && ri.isActive;
+        if (statusFilter === "ACTIVE") return matchesSearch && ri.isActive;
         if (statusFilter === "paused") return matchesSearch && !ri.isActive;
         return matchesSearch;
     });
@@ -338,14 +338,14 @@ export function RecurringInvoicesClient({
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="monthly">Monthly</SelectItem>
-                                                <SelectItem value="weekly">Weekly</SelectItem>
-                                                <SelectItem value="yearly">Yearly</SelectItem>
+                                                <SelectItem value="MONTHLY">Monthly</SelectItem>
+                                                <SelectItem value="WEEKLY">Weekly</SelectItem>
+                                                <SelectItem value="YEARLY">Yearly</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
 
-                                    {frequency === "monthly" && (
+                                    {frequency === "MONTHLY" && (
                                         <div className="space-y-2">
                                             <Label>Day of Month (1-28)</Label>
                                             <Input
@@ -424,7 +424,7 @@ export function RecurringInvoicesClient({
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All Statuses</SelectItem>
-                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="ACTIVE">Active</SelectItem>
                                 <SelectItem value="paused">Paused</SelectItem>
                             </SelectContent>
                         </Select>
@@ -461,7 +461,7 @@ export function RecurringInvoicesClient({
                                                     </Badge>
                                                     <span className="text-xs text-muted-foreground capitalize">
                                                         {ri.frequency}
-                                                        {ri.frequency === "monthly" && ` Day ${ri.dayOfMonth}`}
+                                                        {ri.frequency === "MONTHLY" && ` Day ${ri.dayOfMonth}`}
                                                     </span>
                                                 </div>
                                             </CardTitle>
@@ -535,7 +535,7 @@ export function RecurringInvoicesClient({
                                                 <TableCell>
                                                     <div className="capitalize font-medium">{ri.frequency}</div>
                                                     <div className="text-xs text-muted-foreground">
-                                                        {ri.frequency === "monthly" && `Day ${ri.dayOfMonth}`}
+                                                        {ri.frequency === "MONTHLY" && `Day ${ri.dayOfMonth}`}
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>

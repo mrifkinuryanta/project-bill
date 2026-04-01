@@ -105,7 +105,7 @@ export function ProjectDetailsDialog({
       }
     } catch (error: unknown) {
       console.error("Failed to add item:", error);
-      alert(error instanceof Error ? error.message : "Failed to add item");
+      toast.error(error instanceof Error ? error.message : "Failed to add item");
     } finally {
       setIsSaving(false);
     }

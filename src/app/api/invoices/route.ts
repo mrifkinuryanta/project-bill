@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     const data = validation.data;
 
     // --- Subscription Gate Check ---
-    const { checkLimit, incrementUsage } = await import("@/lib/subscription");
+    const { checkLimit, incrementUsage } = await import("@/lib/billing/subscription");
     const limitCheck = await checkLimit(session.user.id, "invoicesPerMonth");
     if (!limitCheck.allowed) {
       return NextResponse.json(
@@ -94,8 +94,9 @@ export async function POST(request: Request) {
         projectId: data.projectId,
         type: data.type,
         amount: data.amount,
+        notes: data.notes || null,
         dueDate: data.dueDate ? new Date(data.dueDate) : defaultDueDate,
-        status: "unpaid",
+        status: "UNPAID",
       },
       include: { project: true },
     });
@@ -109,6 +110,7 @@ export async function POST(request: Request) {
          await createAuditLog({
             userId: session.user.id,
             action: "CREATE_INVOICE",
+            title: `${invoice.invoiceNumber} (${invoice.project.title})`,
             entityType: "INVOICE",
             entityId: invoice.id,
             newValue: JSON.stringify({ amount: invoice.amount.toString(), type: invoice.type }),

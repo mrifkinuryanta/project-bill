@@ -13,7 +13,7 @@ export async function POST(
     if (!session) return new NextResponse("Unauthorized", { status: 401 });
     
     // Only admins or authorized staff should mark invoices as paid manually
-    if (session.user.role !== "admin") {
+    if (session.user.role !== "ADMIN") {
       return new NextResponse("Forbidden", { status: 403 });
     }
 
@@ -32,7 +32,7 @@ export async function POST(
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    if (existingInvoice.status === "paid") {
+    if (existingInvoice.status === "PAID") {
       return NextResponse.json({ error: "Invoice is already paid" }, { status: 400 });
     }
 
@@ -53,7 +53,7 @@ export async function POST(
     const updatedInvoice = await prisma.invoice.update({
       where: { id },
       data: {
-        status: "paid",
+        status: "PAID",
         paidAt: new Date(),
       },
     });
@@ -63,10 +63,11 @@ export async function POST(
       await createAuditLog({
         userId: session.user.id,
         action: "INVOICE_MARKED_PAID_MANUALLY",
+        title: `${existingInvoice.invoiceNumber} (${project.title})`,
         entityType: "INVOICE",
         entityId: id,
-        oldValue: "unpaid",
-        newValue: "paid",
+        oldValue: "UNPAID",
+        newValue: "PAID",
       }).catch(console.error);
     }
 

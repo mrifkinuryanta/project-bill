@@ -146,7 +146,7 @@ export const EmailLayout = ({ preview, company, lang = "id", children }: EmailLa
 // ── Shared Sub-Components ────────────────────────────────────
 
 interface StatusBadgeProps {
-    type: "unpaid" | "pre_due" | "overdue" | "late_fee" | "paid";
+    type: "UNPAID" | "pre_due" | "overdue" | "late_fee" | "PAID";
     lang?: Language;
 }
 

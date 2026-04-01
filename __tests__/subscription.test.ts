@@ -1,4 +1,4 @@
-import { checkLimit, getSubscription, incrementUsage, isManagedCloud, isSelfHosted, resetAllUsageCounters } from "../src/lib/subscription";
+import { checkLimit, getSubscription, incrementUsage, isManagedCloud, isSelfHosted, resetAllUsageCounters } from "../src/lib/billing/subscription";
 import { prisma } from "../src/lib/prisma";
 
 // Mock prisma and env

@@ -67,7 +67,7 @@ export interface SendInvoiceEmailParams {
 export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
   // --- Subscription Gate Check ---
   if (params.userId) {
-    const { checkLimit } = await import("@/lib/subscription");
+    const { checkLimit } = await import("@/lib/billing/subscription");
     const limitCheck = await checkLimit(params.userId, "emailsPerMonth");
     if (!limitCheck.allowed) {
       console.warn(`[SUBSCRIPTION] Email limit reached for user ${params.userId}`);
@@ -115,7 +115,7 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
 
     // --- Subscription Usage Increment ---
     if (params.userId) {
-      const { incrementUsage } = await import("@/lib/subscription");
+      const { incrementUsage } = await import("@/lib/billing/subscription");
       await incrementUsage(params.userId, "emailsSent");
     }
     // ------------------------------------
@@ -145,7 +145,7 @@ export interface SendRecurringInvoiceEmailParams {
 export async function sendRecurringInvoiceEmail(params: SendRecurringInvoiceEmailParams) {
   // --- Subscription Gate Check ---
   if (params.userId) {
-    const { checkLimit } = await import("@/lib/subscription");
+    const { checkLimit } = await import("@/lib/billing/subscription");
     const limitCheck = await checkLimit(params.userId, "emailsPerMonth");
     if (!limitCheck.allowed) {
       console.warn(`[SUBSCRIPTION] Email limit reached for user ${params.userId}`);
@@ -199,7 +199,7 @@ export async function sendRecurringInvoiceEmail(params: SendRecurringInvoiceEmai
 
     // --- Subscription Usage Increment ---
     if (params.userId) {
-      const { incrementUsage } = await import("@/lib/subscription");
+      const { incrementUsage } = await import("@/lib/billing/subscription");
       await incrementUsage(params.userId, "emailsSent");
     }
     // ------------------------------------
@@ -248,7 +248,7 @@ const REMINDER_SUBJECTS: Record<ReminderType, Record<Language, (title: string) =
 export async function sendReminderEmail(params: SendReminderEmailParams) {
   // --- Subscription Gate Check ---
   if (params.userId) {
-    const { checkLimit } = await import("@/lib/subscription");
+    const { checkLimit } = await import("@/lib/billing/subscription");
     const limitCheck = await checkLimit(params.userId, "emailsPerMonth");
     if (!limitCheck.allowed) {
       console.warn(`[SUBSCRIPTION] Email limit reached for user ${params.userId}`);
@@ -298,7 +298,7 @@ export async function sendReminderEmail(params: SendReminderEmailParams) {
 
     // --- Subscription Usage Increment ---
     if (params.userId) {
-      const { incrementUsage } = await import("@/lib/subscription");
+      const { incrementUsage } = await import("@/lib/billing/subscription");
       await incrementUsage(params.userId, "emailsSent");
     }
     // ------------------------------------
@@ -322,9 +322,21 @@ export interface SendPaymentSuccessEmailParams {
   sowPdfBuffer?: Buffer;
   invoicePdfBuffer?: Buffer;
   lang?: Language;
+  userId?: string; // Add userId for subscription tracking
 }
 
 export async function sendPaymentSuccessEmail(params: SendPaymentSuccessEmailParams) {
+  // --- Subscription Gate Check ---
+  if (params.userId) {
+    const { checkLimit } = await import("@/lib/billing/subscription");
+    const limitCheck = await checkLimit(params.userId, "emailsPerMonth");
+    if (!limitCheck.allowed) {
+      console.warn(`[SUBSCRIPTION] Email limit reached for user ${params.userId}`);
+      return { success: false, quotaExceeded: true };
+    }
+  }
+  // -------------------------------
+
   const lang = params.lang || "id";
   const settings = await getCompanySettings();
 
@@ -383,6 +395,13 @@ export async function sendPaymentSuccessEmail(params: SendPaymentSuccessEmailPar
       console.error("[RESEND] API Error:", error);
       return { success: false, error: error.message };
     }
+
+    // --- Subscription Usage Increment ---
+    if (params.userId) {
+      const { incrementUsage } = await import("@/lib/billing/subscription");
+      await incrementUsage(params.userId, "emailsSent");
+    }
+    // ------------------------------------
 
     return { success: true, data };
   } catch (error) {

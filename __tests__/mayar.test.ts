@@ -29,7 +29,7 @@ describe("verifyMayarWebhook", () => {
       mayarWebhookSecret: null,
     });
 
-    const { verifyMayarWebhook } = await import("../src/lib/mayar");
+    const { verifyMayarWebhook } = await import("../src/lib/billing/mayar");
     const result = await verifyMayarWebhook("test_payload", "any_signature");
     expect(result).toBe(false);
 
@@ -44,7 +44,7 @@ describe("verifyMayarWebhook", () => {
     });
     (decrypt as jest.Mock).mockReturnValue(secret);
 
-    const { verifyMayarWebhook } = await import("../src/lib/mayar");
+    const { verifyMayarWebhook } = await import("../src/lib/billing/mayar");
     const payload = JSON.stringify({ event: "payment.success", amount: 1000 });
     
     const signature = crypto
@@ -64,7 +64,7 @@ describe("verifyMayarWebhook", () => {
     });
     (decrypt as jest.Mock).mockReturnValue(secret);
 
-    const { verifyMayarWebhook } = await import("../src/lib/mayar");
+    const { verifyMayarWebhook } = await import("../src/lib/billing/mayar");
     const payload = JSON.stringify({ event: "payment.success", amount: 1000 });
     
     const invalidSignature = crypto
@@ -84,7 +84,7 @@ describe("verifyMayarWebhook", () => {
     });
     (decrypt as jest.Mock).mockReturnValue(secret);
 
-    const { verifyMayarWebhook } = await import("../src/lib/mayar");
+    const { verifyMayarWebhook } = await import("../src/lib/billing/mayar");
     const payload = JSON.stringify({ event: "payment.success" });
     const invalidSignature = "1234abcd";
 

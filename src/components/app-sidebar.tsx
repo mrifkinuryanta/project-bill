@@ -18,6 +18,8 @@ import {
   GalleryVerticalEnd,
   Pencil,
   CalendarClock,
+  History,
+  BarChart3,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useTheme } from "next-themes";
@@ -112,6 +114,16 @@ const navGroups: NavGroup[] = [
         title: "Recurring",
         url: "/recurring-invoices",
         icon: CalendarClock,
+      },
+      {
+        title: "Reports",
+        url: "/reports",
+        icon: BarChart3,
+      },
+      {
+        title: "Activity",
+        url: "/activity",
+        icon: History,
       },
     ],
   },
