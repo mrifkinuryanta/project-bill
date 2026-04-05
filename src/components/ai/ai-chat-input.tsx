@@ -26,7 +26,7 @@ export function AIChatInput({ onSend, disabled }: AIChatInputProps) {
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-        placeholder="Tanya apa saja tentang bisnis kamu..."
+        placeholder="Ask me anything about your business..."
         className="min-h-[44px] resize-none text-sm"
         disabled={disabled}
         rows={1}

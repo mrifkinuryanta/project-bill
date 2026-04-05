@@ -128,13 +128,13 @@ export async function getProactiveInsights(userId: string) {
   const insights: Array<{ type: string; priority: string; message: string }> = [];
 
   if (context.stats.overdueInvoices > 0) {
-    insights.push({ type: "overdue_warning", priority: "high", message: `Ada ${context.stats.overdueInvoices} invoice sudah jatuh tempo tapi belum dibayar.` });
+    insights.push({ type: "overdue_warning", priority: "high", message: `${context.stats.overdueInvoices} invoice` + (context.stats.overdueInvoices > 1 ? "s are" : " is") + ` overdue and awaiting payment.` });
   }
   if (context.stats.totalPending > 0 && context.stats.totalPending > context.stats.totalPaid * 0.5) {
-    insights.push({ type: "cashflow_alert", priority: "medium", message: `Total pending Rp ${context.stats.totalPending.toLocaleString("id-ID")} — lebih dari 50% revenue total.` });
+    insights.push({ type: "cashflow_alert", priority: "medium", message: `Pending amount is Rp ${context.stats.totalPending.toLocaleString("id-ID")} — over 50% of total revenue. Consider following up with clients.` });
   }
   if (context.stats.unpaidInvoices >= 3) {
-    insights.push({ type: "follow_up_reminder", priority: "medium", message: `Ada ${context.stats.unpaidInvoices} invoice belum dibayar. Mau generate reminder?` });
+    insights.push({ type: "follow_up_reminder", priority: "medium", message: `${context.stats.unpaidInvoices} invoices are unpaid. Want to generate reminders?` });
   }
 
   return insights;

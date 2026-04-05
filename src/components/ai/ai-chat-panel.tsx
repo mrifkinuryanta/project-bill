@@ -74,7 +74,7 @@ export function AIChatPanel() {
         body: JSON.stringify({ message: content, conversationId }),
       });
 
-      if (!response.ok) throw new Error("Gagal mengirim pesan");
+      if (!response.ok) throw new Error("Failed to send message");
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error("No stream reader");
@@ -123,7 +123,7 @@ export function AIChatPanel() {
         }
       }
     } catch (err) {
-      setStreamContent("⚠️ Terjadi kesalahan. Coba lagi.");
+      setStreamContent("⚠️ An error occurred. Please try again.");
       setIsStreaming(false);
     }
   };
@@ -140,7 +140,7 @@ export function AIChatPanel() {
           <h3 className="text-sm font-semibold">AI Financial Co-Pilot</h3>
         </div>
         <Button variant="ghost" size="sm" onClick={newConversation} className="h-7 gap-1 px-2 text-xs">
-          <Plus className="h-3 w-3" /> Baru
+          <Plus className="h-3 w-3" /> New
         </Button>
       </CardHeader>
 
@@ -162,10 +162,10 @@ export function AIChatPanel() {
         {displayMessages.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
             <Bot className="h-10 w-10 mb-2 opacity-30" />
-            <p className="text-sm font-medium">Hai Kak! 👋</p>
-            <p className="text-xs mt-1">Elena siap bantu analisa bisnis kamu. Tanya apa saja~</p>
+            <p className="text-sm font-medium">Hello! 👋</p>
+            <p className="text-xs mt-1">I'm your AI assistant. Ask me anything about your business.</p>
             <div className="flex flex-wrap gap-1 mt-3 justify-center">
-              {["Total revenue bulan ini?", "Invoice mana yang belum dibayar?", "Siapa klien terbaik saya?"].map((q) => (
+              {["What's my total revenue this month?", "Which invoices are unpaid?", "Who is my best client?"].map((q) => (
                 <Button key={q} variant="outline" size="sm" className="text-xs h-7" onClick={() => sendMessage(q)}>
                   {q}
                 </Button>

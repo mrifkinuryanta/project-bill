@@ -60,12 +60,12 @@ export default function AgentSettingsPage() {
         body: JSON.stringify(config),
       });
       if (res.ok) {
-        toast.success("Pengaturan AI berhasil disimpan");
+        toast.success("AI settings saved successfully");
       } else {
-        toast.error("Gagal menyimpan pengaturan");
+        toast.error("Failed to save settings");
       }
     } catch {
-      toast.error("Gagal menyimpan pengaturan");
+      toast.error("Failed to save settings");
     } finally {
       setSaving(false);
     }
@@ -77,8 +77,8 @@ export default function AgentSettingsPage() {
   return (
     <div className="max-w-2xl mx-auto py-8 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Pengaturan AI Assistant</h1>
-        <p className="text-muted-foreground mt-1">Konfigurasi AI Financial Co-Pilot sesuai kebutuhan</p>
+        <h1 className="text-2xl font-bold">AI Assistant Settings</h1>
+        <p className="text-muted-foreground mt-1">Configure the AI Financial Co-Pilot to your needs</p>
       </div>
 
       <Card>
@@ -93,8 +93,8 @@ export default function AgentSettingsPage() {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="openrouter">OpenRouter</SelectItem>
-                <SelectItem value="openai">OpenAI (belum tersedia)</SelectItem>
-                <SelectItem value="anthropic">Anthropic (belum tersedia)</SelectItem>
+                <SelectItem value="openai">OpenAI (coming soon)</SelectItem>
+                <SelectItem value="anthropic">Anthropic (coming soon)</SelectItem>
               </SelectContent>
             </Select>
           </div>
