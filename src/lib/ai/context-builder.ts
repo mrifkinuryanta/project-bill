@@ -61,12 +61,13 @@ export async function buildBusinessContext(): Promise<BusinessContext> {
     },
   });
 
-  const topClients: ClientSummary[] = clients
-    .map((c) => {
+  const topClients: ClientSummary[] = (clients as Array<{
+    name: string; email: string | null; _count: { projects: number };
+    projects: Array<{ status: string; invoices: Array<{ status: string; amount: unknown }> }>;
+  }>).map((c) => {
       let totalPaid = 0;
       let totalPending = 0;
       let activeProjectCount = 0;
-
       for (const p of c.projects) {
         for (const inv of p.invoices) {
           if (inv.status === "paid") totalPaid += Number(inv.amount);
@@ -74,15 +75,7 @@ export async function buildBusinessContext(): Promise<BusinessContext> {
         }
         if (p.status !== "done") activeProjectCount++;
       }
-
-      return {
-        name: c.name,
-        email: c.email ?? "",
-        totalPaid,
-        totalPending,
-        projectCount: c._count.projects,
-        activeProjectCount,
-      };
+      return { name: c.name, email: c.email ?? "", totalPaid, totalPending, projectCount: c._count.projects, activeProjectCount };
     })
     .sort((a, b) => b.totalPaid - a.totalPaid)
     .slice(0, 5);

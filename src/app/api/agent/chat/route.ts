@@ -17,15 +17,17 @@ export async function POST(request: Request) {
 
     agentChatStream(
       { message, conversationId, userId: session.user.id },
-      (chunk: string) => writer.write(encoder.encode(`data: ${JSON.stringify({ type: "chunk", content: chunk })}\n\n`)),
-      (result) => {
-        writer.write(encoder.encode(`data: ${JSON.stringify({ type: "done", conversationId: result.conversationId, messageId: result.messageId })}\n\n`));
-        writer.write(encoder.encode("data: [DONE]\n\n"));
-        writer.close();
-      },
-      (error: Error) => {
-        writer.write(encoder.encode(`data: ${JSON.stringify({ type: "error", message: error.message })}\n\n`));
-        writer.close();
+      {
+        onChunk: (chunk: string) => writer.write(encoder.encode(`data: ${JSON.stringify({ type: "chunk", content: chunk })}\n\n`)),
+        onComplete: (result) => {
+          writer.write(encoder.encode(`data: ${JSON.stringify({ type: "done", conversationId: result.conversationId, messageId: result.messageId })}\n\n`));
+          writer.write(encoder.encode("data: [DONE]\n\n"));
+          writer.close();
+        },
+        onError: (error: Error) => {
+          writer.write(encoder.encode(`data: ${JSON.stringify({ type: "error", message: error.message })}\n\n`));
+          writer.close();
+        },
       },
     );
 

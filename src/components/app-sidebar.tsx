@@ -20,6 +20,7 @@ import {
   CalendarClock,
   History,
   BarChart3,
+  Bot,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useTheme } from "next-themes";
@@ -145,6 +146,11 @@ const navGroups: NavGroup[] = [
         url: "/settings/subscription",
         // Using a similar generic icon since we don't have lucide's CreditCard imported yet
         icon: FileText, 
+      },
+      {
+        title: "AI Assistant",
+        url: "/settings/agent",
+        icon: Bot,
       },
     ],
   },
