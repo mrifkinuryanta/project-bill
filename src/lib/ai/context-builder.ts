@@ -90,7 +90,7 @@ export async function buildBusinessContext(): Promise<BusinessContext> {
     overdueInvoices: overdueCount,
   };
 
-  const recentInvoices: InvoiceSummary[] = recentInvoicesRaw.map((inv) => ({
+  const recentInvoices: InvoiceSummary[] = recentInvoicesRaw.map((inv: any) => ({
     id: inv.id,
     number: inv.invoiceNumber,
     amount: Number(inv.amount),
@@ -100,7 +100,7 @@ export async function buildBusinessContext(): Promise<BusinessContext> {
     clientName: inv.project.client.name,
   }));
 
-  const upcomingDeadlines: DeadlineSummary[] = upcomingDeadlinesRaw.map((p) => {
+  const upcomingDeadlines: DeadlineSummary[] = upcomingDeadlinesRaw.map((p: any) => {
     const deadline = p.deadline!;
     return {
       title: p.title,

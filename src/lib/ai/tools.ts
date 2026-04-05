@@ -15,7 +15,7 @@ export async function queryInvoices(args: { status?: string; limit?: number; cli
 
   return {
     success: true,
-    data: invoices.map((inv) => ({
+    data: invoices.map((inv: { id: string; invoiceNumber: string; amount: number; status: string; project?: { title?: string; client?: { name?: string } } }) => ({
       id: inv.id,
       number: inv.invoiceNumber,
       amount: Number(inv.amount),
@@ -40,14 +40,14 @@ export async function queryProjects(args: { status?: string; limit?: number; cli
 
   return {
     success: true,
-    data: projects.map((p) => ({
+    data: projects.map((p: any) => ({
       id: p.id,
       title: p.title,
       status: p.status,
       totalPrice: Number(p.totalPrice),
       clientName: p.client?.name ?? "",
       deadline: p.deadline,
-      items: p.items.map((item) => ({ description: item.description, price: Number(item.price) })),
+      items: p.items.map((item: any) => ({ description: item.description, price: Number(item.price) })),
     })),
   };
 }
@@ -100,13 +100,13 @@ export async function getClientDetails(args: { name: string }) {
 
   return {
     success: true,
-    data: clients.map((c) => ({
+    data: clients.map((c: any) => ({
       id: c.id,
       name: c.name,
       email: c.email,
       phone: c.phone,
       projectCount: c._count.projects,
-      totalInvoices: c.projects.reduce((s, p) => s + p.invoices.length, 0),
+      totalInvoices: c.projects.reduce((s: number, p: any) => s + p.invoices.length, 0),
     })),
   };
 }

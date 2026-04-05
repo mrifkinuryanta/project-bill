@@ -15,18 +15,27 @@ export async function POST(request: Request) {
     const stream = new TransformStream();
     const writer = stream.writable.getWriter();
 
+    // Fire-and-forget: stream processing in background
     agentChatStream(
       { message, conversationId, userId: session.user.id },
       {
-        onChunk: (chunk: string) => writer.write(encoder.encode(`data: ${JSON.stringify({ type: "chunk", content: chunk })}\n\n`)),
+        onChunk: (chunk: string) => {
+          writer.write(encoder.encode(`data: ${JSON.stringify({ type: "chunk", content: chunk })}\n\n`));
+        },
+        onToolCall: (tool: string, args: Record<string, unknown>) => {
+          writer.write(encoder.encode(`data: ${JSON.stringify({ type: "tool_call", tool, args })}\n\n`));
+        },
+        onToolResult: (tool: string, result: unknown) => {
+          writer.write(encoder.encode(`data: ${JSON.stringify({ type: "tool_result", tool, result })}\n\n`));
+        },
         onComplete: (result) => {
           writer.write(encoder.encode(`data: ${JSON.stringify({ type: "done", conversationId: result.conversationId, messageId: result.messageId })}\n\n`));
           writer.write(encoder.encode("data: [DONE]\n\n"));
-          writer.close();
+          writer.close().catch(() => {});
         },
         onError: (error: Error) => {
           writer.write(encoder.encode(`data: ${JSON.stringify({ type: "error", message: error.message })}\n\n`));
-          writer.close();
+          writer.close().catch(() => {});
         },
       },
     );
