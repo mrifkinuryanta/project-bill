@@ -150,7 +150,8 @@ export async function agentChatStream(
       where: { conversationId }, orderBy: { createdAt: "asc" }, take: 20,
       select: { role: true, content: true },
     });
-    const llmMessages = [
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const llmMessages: any[] = [
       { role: "system", content: systemPrompt },
       ...msgs.map((m: MessageRecord) => ({ role: m.role, content: m.content })),
     ];

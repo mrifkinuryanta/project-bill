@@ -15,7 +15,7 @@ export async function queryInvoices(args: { status?: string; limit?: number; cli
 
   return {
     success: true,
-    data: invoices.map((inv: { id: string; invoiceNumber: string; amount: number; status: string; project?: { title?: string; client?: { name?: string } } }) => ({
+    data: invoices.map((inv) => ({
       id: inv.id,
       number: inv.invoiceNumber,
       amount: Number(inv.amount),
