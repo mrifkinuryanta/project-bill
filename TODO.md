@@ -70,14 +70,14 @@
 - [x] Layout integration — `<AIFloatingChat />` mounted in dashboard layout
 - [x] All strings translated to English
 
-### Phase 3 — Tool Execution & Testing (✅ Almost Complete)
+### Phase 3 — Tool Execution & Testing (✅ Complete)
 - [x] Tool execution loop — AI calls tools, receives results, includes in response
 - [x] Jest unit tests — `ai-tools.test.ts`, `context-builder.test.ts`
-- [ ] Playwright E2E test — Open AI chat → send message → receive streaming response
+- [x] Playwright E2E test — `e2e/ai-chat.spec.ts` (open chat, send message, streaming)
 - [x] Error handling — API key missing, rate limiting, LLM timeout fallback
 
-### Phase 4 — Production & Polish (✅ Almost Complete)
-- [ ] Dokploy deployment — Docker compose + env config for AI_API_KEY
+### Phase 4 — Production & Polish (✅ Complete)
+- [x] Dokploy deployment — docker-compose.yml updated with AI env vars, .env.example ready
 - [x] Proactive insights on dashboard (show insight cards automatically)
 - [x] Conversation persistence UI — "Continue previous conversation" on load
 - [x] Markdown support in chat (react-markdown + rehype-sanitize)
