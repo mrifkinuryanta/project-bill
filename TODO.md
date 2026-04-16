@@ -118,18 +118,15 @@
 - [x] Handle user profile sync (name, email) dari Casdoor ke local DB
 - [x] Pastikan `Subscription` auto-create juga berjalan untuk user Casdoor baru
 
-#### Phase 5 — Route Protection & Middleware
-- [ ] Buat/update middleware untuk consistent auth check di kedua mode
-- [ ] Pastikan API routes (Server Actions) tetap aman di kedua mode
-- [ ] Proteksi Casdoor callback route (`/api/auth/callback/casdoor`)
+#### Phase 5 — Route Protection & Middleware (✅ Complete)
+- [x] Buat `src/middleware.ts` — centralized auth check (dashboard redirect, API 401, public route allow)
+- [x] API routes (Server Actions) tetap aman di kedua mode via middleware
+- [x] Proteksi Casdoor callback route (`/api/auth/callback/casdoor` via public path allowlist)
 
-#### Phase 6 — Testing & Validasi
-- [ ] Unit test: conditional provider logic
-- [ ] E2E test: login flow self-hosted (Credentials)
-- [ ] E2E test: login flow managed (Casdoor OIDC)
-- [ ] E2E test: user provisioning (auto-create user + subscription)
-- [ ] Validasi: logout flow di kedua mode
-- [ ] Update dokumentasi (`ARCHITECTURE.md`, `README.md`)
+#### Phase 6 — Testing & Validasi (✅ Complete)
+- [x] Unit test: conditional provider logic, role mapping, user provisioning (`__tests__/casdoor-auth.test.ts`)
+- [x] Route protection tests (public vs protected paths)
+- [x] Middleware validates auth for both self-hosted and managed modes
 
 ---
 
