@@ -4,6 +4,16 @@
 
 ---
 
+## 🎯 Current Sprint — Priority Order
+
+1. 🤖 AI — Playwright E2E test + Dokploy deployment config
+2. 🔐 Casdoor — Phase 5 (middleware) + Phase 6 (testing)
+3. 💳 Partial Payments & Milestone Billing
+4. 🌐 Client Portal (Multitenant Dashboard)
+5. 🔗 Stripe Integration
+
+---
+
 ## ✅ Completed
 
 ### 🔐 Subscription & Licensing System (Tiered Gating)
@@ -60,19 +70,18 @@
 - [x] Layout integration — `<AIFloatingChat />` mounted in dashboard layout
 - [x] All strings translated to English
 
-### Phase 3 — Tool Execution & Testing (⏳ TODO)
-- [ ] Tool execution loop — AI calls tools, receives results, includes in response
-- [ ] Jest unit tests — `context-builder.test.ts`, `tools.test.ts`
+### Phase 3 — Tool Execution & Testing (✅ Almost Complete)
+- [x] Tool execution loop — AI calls tools, receives results, includes in response
+- [x] Jest unit tests — `ai-tools.test.ts`, `context-builder.test.ts`
 - [ ] Playwright E2E test — Open AI chat → send message → receive streaming response
-- [ ] Error handling — API key missing, rate limiting, LLM timeout fallback
+- [x] Error handling — API key missing, rate limiting, LLM timeout fallback
 
-### Phase 4 — Production & Polish (⏳ TODO)
-- [ ] Dokploy deployment — Docker compose + env config
-- [ ] AI_API_KEY setup in production
-- [ ] Proactive insights on dashboard (show insight cards automatically)
-- [ ] Conversation persistence UI — "Continue previous conversation" on load
-- [ ] Markdown support in chat (react-markdown + rehype-sanitize)
-- [ ] Rate limiting on `/api/agent/chat` endpoint
+### Phase 4 — Production & Polish (✅ Almost Complete)
+- [ ] Dokploy deployment — Docker compose + env config for AI_API_KEY
+- [x] Proactive insights on dashboard (show insight cards automatically)
+- [x] Conversation persistence UI — "Continue previous conversation" on load
+- [x] Markdown support in chat (react-markdown + rehype-sanitize)
+- [x] Rate limiting on `/api/agent/chat` endpoint (20 req/hr per user)
 
 ---
 
@@ -215,7 +224,9 @@
 
 ### 9. 🌍 Multi-Currency & Stripe Integration — Sprint 21
 
-- [ ] Re-enable USD select di project form
+**Multi-Currency: ✅ Complete** — 8 currencies (IDR, USD, EUR, GBP, SGD, MYR, JPY, AUD), centralized `src/lib/currency.ts`, dynamic UI, per-currency dashboard aggregation.
+
+**Stripe: ⏳ Next**
 - [ ] Integrasi Stripe Checkout (payment intent + webhook)
 - [ ] Implementasi conditional payment gateway: Mayar (IDR) vs Stripe (USD/other)
 - [ ] Tambahkan exchange rate display (optional, manual)
