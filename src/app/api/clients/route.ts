@@ -9,12 +9,14 @@ export async function GET(request: Request) {
     const session = await auth();
     if (!session) return new NextResponse("Unauthorized", { status: 401 });
 
+    const orgId = session.user.activeOrganizationId!;
+
     const { searchParams } = new URL(request.url);
     const limitParam = searchParams.get("limit");
     const pageParam = searchParams.get("page");
 
     const args: Prisma.ClientFindManyArgs = {
-      where: { isArchived: false },
+      where: { isArchived: false, organizationId: orgId },
       orderBy: { createdAt: "desc" },
     };
 
@@ -24,7 +26,9 @@ export async function GET(request: Request) {
       args.skip = (page - 1) * limit;
       args.take = limit;
 
-      const total = await prisma.client.count({ where: { isArchived: false } });
+      const total = await prisma.client.count({
+        where: { isArchived: false, organizationId: orgId },
+      });
       const clients = await prisma.client.findMany(args);
 
       return NextResponse.json({
@@ -55,19 +59,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
-    // --- Subscription Gate Check ---
-    const { checkLimit } = await import("@/lib/billing/subscription");
-    const limitCheck = await checkLimit(session.user.id, "clients");
+    const orgId = session.user.activeOrganizationId!;
+
+    const { checkOrgLimit } = await import("@/lib/billing/subscription");
+    const limitCheck = await checkOrgLimit(orgId, "clients");
     if (!limitCheck.allowed) {
       return NextResponse.json(
         { error: "Plan limit reached", limitCheck },
         { status: 403 }
       );
     }
-    // -------------------------------
 
     const client = await prisma.client.create({
-      data: { name, email, phone },
+      data: { name, email, phone, organizationId: orgId },
     });
 
     await createAuditLog({
@@ -76,6 +80,7 @@ export async function POST(request: Request) {
       entityType: "CLIENT",
       entityId: client.id,
       newValue: name,
+      organizationId: orgId,
     });
 
     return NextResponse.json(client, { status: 201 });

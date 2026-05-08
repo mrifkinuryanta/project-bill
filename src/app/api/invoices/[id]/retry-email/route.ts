@@ -13,9 +13,10 @@ export async function POST(
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const orgId = session.user.activeOrganizationId!;
 
     const invoice = await prisma.invoice.findUnique({
-      where: { id },
+      where: { id, organizationId: orgId },
       include: {
          project: {
             include: { client: true }

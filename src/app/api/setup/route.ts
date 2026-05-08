@@ -42,8 +42,18 @@ export async function POST(req: Request) {
       },
     });
 
-    // Remove password from response
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const slug = Math.random().toString(36).substring(2, 12);
+    const org = await prisma.organization.create({
+      data: { name: name || "My Workspace", slug },
+    });
+    await prisma.organizationMember.create({
+      data: { userId: newUser.id, organizationId: org.id, role: "OWNER" },
+    });
+    await prisma.user.update({
+      where: { id: newUser.id },
+      data: { defaultOrganizationId: org.id },
+    });
+
     const { password: _, ...userWithoutPassword } = newUser;
 
     return NextResponse.json(

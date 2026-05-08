@@ -10,16 +10,19 @@ export async function GET(request: Request) {
         const session = await auth();
         if (!session) return new NextResponse("Unauthorized", { status: 401 });
 
+        const orgId = session.user.activeOrganizationId!;
+
         const { searchParams } = new URL(request.url);
         const projectId = searchParams.get("projectId");
 
         const args: Prisma.RecurringInvoiceFindManyArgs = {
+            where: { organizationId: orgId },
             include: { project: { include: { client: true } } },
             orderBy: { createdAt: "desc" },
         };
 
         if (projectId) {
-            args.where = { projectId };
+            args.where = { ...args.where, projectId };
         }
 
         const recurringInvoices = await prisma.recurringInvoice.findMany(args);
@@ -48,38 +51,31 @@ export async function POST(request: Request) {
         const validation = recurringInvoiceSchema.safeParse(json);
         if (!validation.success) {
             return NextResponse.json(
-                {
-                    error: "Validation failed",
-                    details: validation.error.flatten().fieldErrors,
-                },
+                { error: "Validation failed", details: validation.error.flatten().fieldErrors },
                 { status: 400 },
             );
         }
 
         const data = validation.data;
+        const orgId = session.user.activeOrganizationId!;
 
-        // --- Subscription Gate Check ---
-        const { checkLimit } = await import("@/lib/billing/subscription");
-        const limitCheck = await checkLimit(session.user.id, "recurringTemplates");
+        const { checkOrgLimit } = await import("@/lib/billing/subscription");
+        const limitCheck = await checkOrgLimit(orgId, "recurringTemplates");
         if (!limitCheck.allowed) {
             return NextResponse.json(
                 { error: "Plan limit reached", limitCheck },
                 { status: 403 }
             );
         }
-        // -------------------------------
 
-        // Check if project exists
-        const project = await prisma.project.findUnique({
-            where: { id: data.projectId },
+        const project = await prisma.project.findFirst({
+            where: { id: data.projectId, organizationId: orgId },
         });
 
         if (!project) {
             return NextResponse.json({ error: "Project not found" }, { status: 400 });
         }
 
-        // Calculate initial nextRunAt
-        // NextRunAt should be startDate if startDate is in the future or today
         const start = new Date(data.startDate);
         start.setHours(0, 0, 0, 0);
         const today = new Date();
@@ -87,21 +83,16 @@ export async function POST(request: Request) {
 
         let nextRunAt = start;
         if (start < today) {
-            // if start date is in the past, calculate the next run based on frequency
             nextRunAt = new Date(today);
             if (data.frequency === "MONTHLY") {
                 nextRunAt.setDate(data.dayOfMonth);
-                if (nextRunAt <= today) {
-                    nextRunAt.setMonth(nextRunAt.getMonth() + 1);
-                }
+                if (nextRunAt <= today) nextRunAt.setMonth(nextRunAt.getMonth() + 1);
             } else if (data.frequency === "WEEKLY") {
                 const daysUntilNext = (7 - today.getDay() + start.getDay()) % 7;
                 nextRunAt.setDate(today.getDate() + (daysUntilNext === 0 ? 7 : daysUntilNext));
             } else if (data.frequency === "YEARLY") {
                 nextRunAt.setMonth(start.getMonth(), start.getDate());
-                if (nextRunAt <= today) {
-                    nextRunAt.setFullYear(nextRunAt.getFullYear() + 1);
-                }
+                if (nextRunAt <= today) nextRunAt.setFullYear(nextRunAt.getFullYear() + 1);
             }
         }
 
@@ -117,6 +108,7 @@ export async function POST(request: Request) {
                 description: data.description,
                 isActive: data.isActive,
                 nextRunAt: nextRunAt,
+                organizationId: orgId,
             },
             include: { project: true },
         });
@@ -127,6 +119,7 @@ export async function POST(request: Request) {
             entityType: "RECURRING_INVOICE",
             entityId: recurringInvoice.id,
             newValue: data.title,
+            organizationId: orgId,
         });
 
         return NextResponse.json(recurringInvoice, { status: 201 });

@@ -10,10 +10,11 @@ export async function GET() {
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
+        const orgId = session.user.activeOrganizationId!;
+
         const templates = await prisma.sOWTemplate.findMany({
-            orderBy: {
-                createdAt: 'desc'
-            }
+            where: { organizationId: orgId },
+            orderBy: { createdAt: "desc" },
         });
 
         return NextResponse.json(templates);
@@ -30,6 +31,7 @@ export async function POST(req: Request) {
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
+        const orgId = session.user.activeOrganizationId!;
         const body = await req.json();
         const { name, content } = body;
 
@@ -37,22 +39,17 @@ export async function POST(req: Request) {
             return new NextResponse("Name and content are required", { status: 400 });
         }
 
-        // --- Subscription Gate Check ---
-        const { checkLimit } = await import("@/lib/billing/subscription");
-        const limitCheck = await checkLimit(session.user.id, "sowTemplates");
+        const { checkOrgLimit } = await import("@/lib/billing/subscription");
+        const limitCheck = await checkOrgLimit(orgId, "sowTemplates");
         if (!limitCheck.allowed) {
             return NextResponse.json(
                 { error: "Plan limit reached", limitCheck },
                 { status: 403 }
             );
         }
-        // -------------------------------
 
         const template = await prisma.sOWTemplate.create({
-            data: {
-                name,
-                content,
-            },
+            data: { name, content, organizationId: orgId },
         });
 
         await createAuditLog({
@@ -61,6 +58,7 @@ export async function POST(req: Request) {
             entityType: "SOW_TEMPLATE",
             entityId: template.id,
             newValue: name,
+            organizationId: orgId,
         });
 
         return NextResponse.json(template);

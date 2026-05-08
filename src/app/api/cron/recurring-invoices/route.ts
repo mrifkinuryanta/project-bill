@@ -38,7 +38,7 @@ export async function GET(request: Request) {
             },
             include: {
                 project: {
-                    include: { client: true },
+                    select: { id: true, client: { select: { email: true } }, organizationId: true },
                 },
             },
         });
@@ -105,6 +105,7 @@ export async function GET(request: Request) {
 
                     const created = await tx.invoice.create({
                         data: {
+                            organizationId: template.project.organizationId,
                             invoiceNumber,
                             projectId: template.projectId,
                             type: "RECURRING",

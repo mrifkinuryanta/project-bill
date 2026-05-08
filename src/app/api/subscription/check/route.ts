@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
-import { checkLimit } from "@/lib/billing/subscription";
+import { checkOrgLimit } from "@/lib/billing/subscription";
 
 export async function GET(req: Request) {
   try {
@@ -9,6 +9,8 @@ export async function GET(req: Request) {
     if (!session?.user?.id) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
+
+    const orgId = session.user.activeOrganizationId!;
 
     const { searchParams } = new URL(req.url);
     const resource = searchParams.get("resource");
@@ -23,7 +25,7 @@ export async function GET(req: Request) {
       return new NextResponse("Invalid resource", { status: 400 });
     }
 
-    const result = await checkLimit(session.user.id, resource as Parameters<typeof checkLimit>[1]);
+    const result = await checkOrgLimit(orgId, resource as Parameters<typeof checkOrgLimit>[1]);
 
     return NextResponse.json(result);
   } catch (error) {

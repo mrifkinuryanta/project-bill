@@ -28,24 +28,23 @@ export async function PATCH(
       taxRate,
     } = json;
 
+    const orgId = session.user.activeOrganizationId!;
+
     const updateData: Prisma.ProjectUncheckedUpdateInput = {};
     if (title !== undefined) updateData.title = title;
     if (clientId !== undefined) updateData.clientId = clientId;
-    if (totalPrice !== undefined)
-      updateData.totalPrice = parseFloat(totalPrice);
-    if (dpAmount !== undefined)
-      updateData.dpAmount = dpAmount ? parseFloat(dpAmount) : null;
+    if (totalPrice !== undefined) updateData.totalPrice = parseFloat(totalPrice);
+    if (dpAmount !== undefined) updateData.dpAmount = dpAmount ? parseFloat(dpAmount) : null;
     if (status !== undefined) updateData.status = status;
     if (currency !== undefined) updateData.currency = currency;
     if (language !== undefined) updateData.language = language;
-    if (deadline !== undefined)
-      updateData.deadline = deadline ? new Date(deadline) : null;
+    if (deadline !== undefined) updateData.deadline = deadline ? new Date(deadline) : null;
     if (terms !== undefined) updateData.terms = terms ? terms : null;
     if (taxName !== undefined) updateData.taxName = taxName ? taxName : null;
     if (taxRate !== undefined) updateData.taxRate = taxRate !== null ? parseFloat(taxRate) : null;
 
-    const existing = await prisma.project.findUnique({
-      where: { id },
+    const existing = await prisma.project.findFirst({
+      where: { id, organizationId: orgId },
       include: { invoices: true },
     });
 
@@ -53,9 +52,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    // Phase 4.1: Lock Entire Project (except status) if SOW is signed
     if (existing.termsAcceptedAt) {
-      // Allow only status changes if signed
       const isTryingToChangeCoreFields =
         (updateData.title !== undefined && updateData.title !== existing.title) ||
         (updateData.clientId !== undefined && updateData.clientId !== existing.clientId) ||
@@ -76,7 +73,6 @@ export async function PATCH(
       }
     }
 
-    // Phase 4.2: Lock Financial Fields due to generated invoices
     if (existing.invoices.length > 0) {
       const isFinanciallyModified =
         (updateData.totalPrice !== undefined && updateData.totalPrice !== Number(existing.totalPrice)) ||
@@ -93,19 +89,11 @@ export async function PATCH(
       }
     }
 
-    // Validate DP does not exceed totalPrice
-    if (
-      updateData.totalPrice !== undefined ||
-      updateData.dpAmount !== undefined
-    ) {
-      const effectiveTotal =
-        updateData.totalPrice ?? Number(existing.totalPrice);
-      const effectiveDp =
-        updateData.dpAmount !== undefined
-          ? updateData.dpAmount
-          : existing.dpAmount
-            ? Number(existing.dpAmount)
-            : null;
+    if (updateData.totalPrice !== undefined || updateData.dpAmount !== undefined) {
+      const effectiveTotal = updateData.totalPrice ?? Number(existing.totalPrice);
+      const effectiveDp = updateData.dpAmount !== undefined
+        ? updateData.dpAmount
+        : existing.dpAmount ? Number(existing.dpAmount) : null;
       if (effectiveDp !== null && effectiveDp > effectiveTotal) {
         return NextResponse.json(
           { error: "DP amount cannot exceed total price" },
@@ -113,22 +101,20 @@ export async function PATCH(
         );
       }
     }
-    
-    // Phase 4.3: Subscription Limit Check for Reactivation
-    // If the project was "DONE" and is now being moved to an active state, check limit.
+
     if (existing.status === "DONE" && status !== undefined && status !== "DONE") {
-        const { checkLimit } = await import("@/lib/billing/subscription");
-        const limitCheck = await checkLimit(session.user.id, "activeProjects");
-        if (!limitCheck.allowed) {
-            return NextResponse.json(
-                { error: "Cannot reactivate project. Active projects limit reached.", limitCheck },
-                { status: 403 }
-            );
-        }
+      const { checkOrgLimit } = await import("@/lib/billing/subscription");
+      const limitCheck = await checkOrgLimit(orgId, "activeProjects");
+      if (!limitCheck.allowed) {
+        return NextResponse.json(
+          { error: "Cannot reactivate project. Active projects limit reached.", limitCheck },
+          { status: 403 }
+        );
+      }
     }
 
     const project = await prisma.project.update({
-      where: { id },
+      where: { id, organizationId: orgId },
       data: updateData,
       include: { client: true, invoices: true },
     });
@@ -140,6 +126,7 @@ export async function PATCH(
       entityId: id,
       oldValue: existing.title,
       newValue: title || existing.title,
+      organizationId: orgId,
     });
 
     return NextResponse.json(project);
@@ -161,10 +148,10 @@ export async function DELETE(
     if (!session) return new NextResponse("Unauthorized", { status: 401 });
     const resolvedParams = await params;
     const id = resolvedParams.id;
+    const orgId = session.user.activeOrganizationId!;
 
-    // Check for unpaid invoices
-    const project = await prisma.project.findUnique({
-      where: { id },
+    const project = await prisma.project.findFirst({
+      where: { id, organizationId: orgId },
       include: { invoices: true },
     });
 
@@ -177,23 +164,14 @@ export async function DELETE(
     );
     if (hasUnpaidInvoices) {
       return NextResponse.json(
-        {
-          error:
-            "Cannot delete project with unpaid invoices. Please resolve all invoices first.",
-        },
+        { error: "Cannot delete project with unpaid invoices. Please resolve all invoices first." },
         { status: 403 },
       );
     }
 
     await prisma.$transaction([
-      // Delete child invoices first to satisfy the Restricted foreign key
-      prisma.invoice.deleteMany({
-        where: { projectId: id },
-      }),
-      // Then delete the project
-      prisma.project.delete({
-        where: { id },
-      }),
+      prisma.invoice.deleteMany({ where: { projectId: id, organizationId: orgId } }),
+      prisma.project.delete({ where: { id, organizationId: orgId } }),
     ]);
 
     await createAuditLog({
@@ -202,6 +180,7 @@ export async function DELETE(
       entityType: "PROJECT",
       entityId: id,
       oldValue: project.title,
+      organizationId: orgId,
     });
 
     return new NextResponse(null, { status: 204 });

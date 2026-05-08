@@ -12,6 +12,8 @@ export async function GET() {
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
+        const orgId = session.user.activeOrganizationId!;
+
         if (isSelfHosted()) {
             return NextResponse.json({
                 mode: "self-hosted",
@@ -28,10 +30,10 @@ export async function GET() {
 
         // Get current counts for static resources
         const [clientCount, projectCount, recurringCount, sowCount, teamCount] = await Promise.all([
-            prisma.client.count({ where: { isArchived: false } }),
-            prisma.project.count({ where: { status: { not: "DONE" } } }),
-            prisma.recurringInvoice.count({ where: { isActive: true } }),
-            prisma.sOWTemplate.count(),
+            prisma.client.count({ where: { organizationId: orgId, isArchived: false } }),
+            prisma.project.count({ where: { organizationId: orgId, status: { not: "DONE" } } }),
+            prisma.recurringInvoice.count({ where: { organizationId: orgId, isActive: true } }),
+            prisma.sOWTemplate.count({ where: { organizationId: orgId } }),
             prisma.user.count(),
         ]);
 

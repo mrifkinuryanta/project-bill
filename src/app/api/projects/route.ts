@@ -9,11 +9,14 @@ export async function GET(request: Request) {
     const session = await auth();
     if (!session) return new NextResponse("Unauthorized", { status: 401 });
 
+    const orgId = session.user.activeOrganizationId!;
+
     const { searchParams } = new URL(request.url);
     const limitParam = searchParams.get("limit");
     const pageParam = searchParams.get("page");
 
     const args: Prisma.ProjectFindManyArgs = {
+      where: { organizationId: orgId },
       include: { client: true, invoices: true, items: true },
       orderBy: { createdAt: "desc" },
     };
@@ -24,7 +27,7 @@ export async function GET(request: Request) {
       args.skip = (page - 1) * limit;
       args.take = limit;
 
-      const total = await prisma.project.count();
+      const total = await prisma.project.count({ where: { organizationId: orgId } });
       const projects = await prisma.project.findMany(args);
 
       return NextResponse.json({
@@ -70,19 +73,17 @@ export async function POST(request: Request) {
     }
 
     const data = validation.data;
+    const orgId = session.user.activeOrganizationId!;
 
-    // --- Subscription Gate Check ---
-    const { checkLimit } = await import("@/lib/billing/subscription");
-    const limitCheck = await checkLimit(session.user.id, "activeProjects");
+    const { checkOrgLimit } = await import("@/lib/billing/subscription");
+    const limitCheck = await checkOrgLimit(orgId, "activeProjects");
     if (!limitCheck.allowed) {
       return NextResponse.json(
         { error: "Plan limit reached", limitCheck },
         { status: 403 }
       );
     }
-    // -------------------------------
 
-    // If items exist, recalculate totalPrice from them
     let totalPrice = data.totalPrice;
     if (data.items && data.items.length > 0) {
       totalPrice = data.items.reduce((acc, item) => acc + item.price, 0);
@@ -97,6 +98,7 @@ export async function POST(request: Request) {
       language: data.language,
       deadline: data.deadline ? new Date(data.deadline) : null,
       status: "TO_DO",
+      organizationId: orgId,
     };
 
     projectData.terms = data.terms ?? null;
@@ -110,6 +112,7 @@ export async function POST(request: Request) {
           price: i.price,
           quantity: i.quantity ?? null,
           rate: i.rate ?? null,
+          organizationId: orgId,
         })),
       };
     }
@@ -125,6 +128,7 @@ export async function POST(request: Request) {
       entityType: "PROJECT",
       entityId: project.id,
       newValue: data.title,
+      organizationId: orgId,
     });
 
     return NextResponse.json(project, { status: 201 });

@@ -8,6 +8,7 @@ export interface AgentChatOptions {
   conversationId?: string;
   message: string;
   userId: string;
+  organizationId: string;
   locale?: "id" | "en";
 }
 
@@ -95,7 +96,7 @@ export async function agentChat(options: AgentChatOptions): Promise<AgentChatRes
   let conversationId: string = options.conversationId ?? "";
   if (!conversationId) {
     const conv = await prisma.agentConversation.create({
-      data: { userId: options.userId, title: message.substring(0, 50) },
+      data: { userId: options.userId, title: message.substring(0, 50), organizationId: options.organizationId },
     });
     conversationId = conv.id;
   }
@@ -139,7 +140,7 @@ export async function agentChatStream(
     let conversationId: string = options.conversationId ?? "";
     if (!conversationId) {
       const conv = await prisma.agentConversation.create({
-        data: { userId: options.userId, title: message.substring(0, 50) },
+        data: { userId: options.userId, title: message.substring(0, 50), organizationId: options.organizationId },
       });
       conversationId = conv.id;
     }

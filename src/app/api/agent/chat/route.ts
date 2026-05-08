@@ -34,7 +34,7 @@ export async function POST(request: Request) {
 
     // Fire-and-forget: stream processing in background
     agentChatStream(
-      { message, conversationId, userId: session.user.id },
+      { message, conversationId, userId: session.user.id, organizationId: session.user.activeOrganizationId! },
       {
         onChunk: (chunk: string) => {
           writer.write(encoder.encode(`data: ${JSON.stringify({ type: "chunk", content: chunk })}\n\n`));

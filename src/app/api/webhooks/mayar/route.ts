@@ -95,6 +95,7 @@ export async function POST(request: Request) {
           message: `Invoice ${updatedInvoice.invoiceNumber} for project "${updatedInvoice.project.title}" was marked as paid.`,
           type: "payment",
           linkUrl: `/invoices/${updatedInvoice.id}`,
+          organizationId: updatedInvoice.organizationId,
         });
 
         // Generate PDF and send Email in the background

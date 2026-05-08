@@ -6,15 +6,55 @@ datasource db {
   provider = "postgresql"
 }
 
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  logoUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members             OrganizationMember[]
+  clients             Client[]
+  projects            Project[]
+  projectItems        ProjectItem[]
+  invoices            Invoice[]
+  settings            Settings[]
+  sowTemplates        SOWTemplate[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+  recurringInvoices   RecurringInvoice[]
+  agentConversations  AgentConversation[]
+  agentMemories       AgentMemory[]
+}
+
+model OrganizationMember {
+  id             String   @id @default(uuid())
+  userId         String
+  organizationId String
+  role           String   @default("MEMBER")
+  joinedAt       DateTime @default(now())
+
+  user         User         @relation(fields: [userId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+}
+
 model Client {
-  id         String    @id @default(uuid())
-  name       String
-  email      String?
-  phone      String?
-  isArchived Boolean   @default(false)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  projects   Project[]
+  id             String       @id @default(uuid())
+  name           String
+  email          String?
+  phone          String?
+  isArchived     Boolean      @default(false)
+  organizationId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  projects       Project[]
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
 }
 
 model Project {
@@ -34,67 +74,79 @@ model Project {
   termsVersionId         Int?
   taxName                String?
   taxRate                Decimal?           @db.Decimal(19, 4)
+  organizationId         String
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
   invoices               Invoice[]
   client                 Client             @relation(fields: [clientId], references: [id])
   items                  ProjectItem[]
   recurringInvoices      RecurringInvoice[]
+  organization           Organization      @relation(fields: [organizationId], references: [id])
 
   @@index([status])
   @@index([clientId])
+  @@index([organizationId])
 }
 
 model ProjectItem {
-  id          String   @id @default(uuid())
-  projectId   String
-  description String
-  price       Decimal  @db.Decimal(19, 4)
-  quantity    Decimal? @db.Decimal(19, 4)
-  rate        Decimal? @db.Decimal(19, 4)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id             String       @id @default(uuid())
+  projectId      String
+  description    String
+  price          Decimal      @db.Decimal(19, 4)
+  quantity       Decimal?     @db.Decimal(19, 4)
+  rate           Decimal?     @db.Decimal(19, 4)
+  organizationId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
 }
 
 model Invoice {
-  id             String    @id @default(uuid())
-  invoiceNumber  String    @unique @default(uuid())
+  id             String       @id @default(uuid())
+  invoiceNumber  String       @unique @default(uuid())
   projectId      String
   type           String
   notes          String?
-  amount         Decimal   @db.Decimal(19, 4)
-  status         String    @default("unpaid")
-  emailStatus    String    @default("pending")
+  amount         Decimal      @db.Decimal(19, 4)
+  status         String       @default("unpaid")
+  emailStatus    String       @default("pending")
   dueDate        DateTime?
   paymentLink    String?
   paymentId      String?
   paidAt         DateTime?
   lastReminderAt DateTime?
-  lateFeeApplied Boolean   @default(false)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  project        Project   @relation(fields: [projectId], references: [id])
+  lateFeeApplied Boolean      @default(false)
+  organizationId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  project        Project      @relation(fields: [projectId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@index([status])
   @@index([projectId])
+  @@index([organizationId])
 }
 
 model User {
-  id                  String        @id @default(uuid())
-  email               String        @unique
-  password            String
-  name                String
-  role                String        @default("admin")
-  onboardingCompleted Boolean       @default(false)
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
-  subscription        Subscription?
+  id                     String                @id @default(uuid())
+  email                  String                @unique
+  password               String
+  name                   String
+  role                   String                @default("admin")
+  onboardingCompleted    Boolean               @default(false)
+  defaultOrganizationId  String?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  subscription           Subscription?
+  organizationMembers    OrganizationMember[]
 }
 
 model Settings {
-  id                 String   @id @default("global")
-  companyName        String   @default("ProjectBill")
+  id                 String       @id @default(uuid())
+  companyName        String       @default("ProjectBill")
   companyAddress     String?
   companyEmail       String?
   senderEmail        String?
@@ -106,66 +158,83 @@ model Settings {
   bankName           String?
   bankAccountName    String?
   bankAccountNumber  String?
-  updatedAt          DateTime @updatedAt
+  organizationId     String
+  updatedAt          DateTime     @updatedAt
+  organization       Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
 }
 
 model SOWTemplate {
-  id        String   @id @default(uuid())
-  name      String
-  content   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String       @id @default(uuid())
+  name           String
+  content        String
+  organizationId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
 }
 
 model AuditLog {
-  id         String   @id @default(uuid())
-  userId     String
-  action     String
-  title      String?  // New field to capture context strings logically without polluting the action name
-  entityType String?
-  entityId   String?
-  field      String?
-  oldValue   String?
-  newValue   String?
-  createdAt  DateTime @default(now())
+  id             String       @id @default(uuid())
+  userId         String
+  action         String
+  title          String?
+  entityType     String?
+  entityId       String?
+  field          String?
+  oldValue       String?
+  newValue       String?
+  organizationId String
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@index([userId])
   @@index([createdAt])
   @@index([entityType, entityId])
+  @@index([organizationId])
 }
 
 model RecurringInvoice {
-  id          String    @id @default(uuid())
-  projectId   String
-  title       String
-  amount      Decimal   @db.Decimal(19, 4)
-  frequency   String    @default("monthly")
-  dayOfMonth  Int       @default(1)
-  startDate   DateTime
-  endDate     DateTime?
-  nextRunAt   DateTime
-  isActive    Boolean   @default(true)
-  description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id             String       @id @default(uuid())
+  projectId      String
+  title          String
+  amount         Decimal      @db.Decimal(19, 4)
+  frequency      String       @default("monthly")
+  dayOfMonth     Int          @default(1)
+  startDate      DateTime
+  endDate        DateTime?
+  nextRunAt      DateTime
+  isActive       Boolean      @default(true)
+  description    String?
+  organizationId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@index([isActive, nextRunAt])
   @@index([projectId])
+  @@index([organizationId])
 }
 
 model Notification {
-  id        String   @id @default(uuid())
-  title     String
-  message   String
-  type      String
-  isRead    Boolean  @default(false)
-  linkUrl   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String       @id @default(uuid())
+  title          String
+  message        String
+  type           String
+  isRead         Boolean      @default(false)
+  linkUrl        String?
+  organizationId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@index([isRead])
   @@index([createdAt])
+  @@index([organizationId])
 }
 
 model Subscription {
@@ -193,15 +262,18 @@ model Subscription {
 }
 
 model AgentConversation {
-  id        String   @id @default(uuid())
-  title     String   @default("New Conversation")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  userId    String
-  messages  AgentMessage[]
+  id             String       @id @default(uuid())
+  title          String       @default("New Conversation")
+  organizationId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  userId         String
+  messages       AgentMessage[]
+  organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@index([userId, createdAt])
   @@index([userId])
+  @@index([organizationId])
 }
 
 model AgentMessage {
@@ -218,16 +290,19 @@ model AgentMessage {
 }
 
 model AgentMemory {
-  id        String   @id @default(uuid())
-  userId    String
-  key       String   // "client_preferences", "project_patterns", "pricing_insights"
-  value     Json
-  context   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String       @id @default(uuid())
+  userId         String
+  key            String
+  value          Json
+  context        String?
+  organizationId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@unique([userId, key])
   @@index([userId])
+  @@index([organizationId])
 }
 
 model AgentConfig {

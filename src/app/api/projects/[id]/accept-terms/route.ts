@@ -16,7 +16,7 @@ export async function PATCH(
 
     const project = await prisma.project.findUnique({
       where: { id },
-      select: { terms: true, termsAcceptedAt: true, termsVersionId: true, updatedAt: true },
+      select: { terms: true, termsAcceptedAt: true, termsVersionId: true, updatedAt: true, organizationId: true },
     });
 
     if (!project) {
@@ -56,6 +56,7 @@ export async function PATCH(
     try {
       await createAuditLog({
         userId: "system_client", // since this is a public unauthenticated route
+        organizationId: project.organizationId,
         action: "ACCEPT_SOW",
         entityType: "PROJECT",
         entityId: id,
@@ -69,6 +70,7 @@ export async function PATCH(
         message: `Client accepted SOW for project "${p?.title}".`,
         type: "sow_signed",
         linkUrl: `/projects`,
+        organizationId: project.organizationId,
       });
     } catch (e) {
       console.error(e);

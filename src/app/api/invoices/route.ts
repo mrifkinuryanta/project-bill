@@ -8,12 +8,14 @@ export async function GET(request: Request) {
   try {
     const session = await auth();
     if (!session) return new NextResponse("Unauthorized", { status: 401 });
+    const orgId = session.user.activeOrganizationId!;
 
     const { searchParams } = new URL(request.url);
     const limitParam = searchParams.get("limit");
     const pageParam = searchParams.get("page");
 
     const args: Prisma.InvoiceFindManyArgs = {
+      where: { organizationId: orgId },
       include: { project: { include: { client: true } } },
       orderBy: { createdAt: "desc" },
     };
@@ -24,7 +26,7 @@ export async function GET(request: Request) {
       args.skip = (page - 1) * limit;
       args.take = limit;
 
-      const total = await prisma.invoice.count();
+      const total = await prisma.invoice.count({ where: { organizationId: orgId } });
       const invoices = await prisma.invoice.findMany(args);
 
       return NextResponse.json({
@@ -62,26 +64,22 @@ export async function POST(request: Request) {
     const validation = invoiceSchema.safeParse(json);
     if (!validation.success) {
       return NextResponse.json(
-        {
-          error: "Validation failed",
-          details: validation.error.flatten().fieldErrors,
-        },
+        { error: "Validation failed", details: validation.error.flatten().fieldErrors },
         { status: 400 },
       );
     }
 
     const data = validation.data;
+    const orgId = session.user.activeOrganizationId!;
 
-    // --- Subscription Gate Check ---
-    const { checkLimit, incrementUsage } = await import("@/lib/billing/subscription");
-    const limitCheck = await checkLimit(session.user.id, "invoicesPerMonth");
+    const { checkOrgLimit, incrementOrgUsage } = await import("@/lib/billing/subscription");
+    const limitCheck = await checkOrgLimit(orgId, "invoicesPerMonth");
     if (!limitCheck.allowed) {
       return NextResponse.json(
         { error: "Plan limit reached", limitCheck },
         { status: 403 }
       );
     }
-    // -------------------------------
 
     const invoiceNumber = await generateInvoiceNumber();
 
@@ -97,27 +95,27 @@ export async function POST(request: Request) {
         notes: data.notes || null,
         dueDate: data.dueDate ? new Date(data.dueDate) : defaultDueDate,
         status: "UNPAID",
+        organizationId: orgId,
       },
       include: { project: true },
     });
 
-    // --- Subscription Usage Increment ---
-    await incrementUsage(session.user.id, "invoicesCreated");
-    // ------------------------------------
+    await incrementOrgUsage(orgId, "invoicesCreated");
 
     try {
       if (session?.user?.id) {
-         await createAuditLog({
-            userId: session.user.id,
-            action: "CREATE_INVOICE",
-            title: `${invoice.invoiceNumber} (${invoice.project.title})`,
-            entityType: "INVOICE",
-            entityId: invoice.id,
-            newValue: JSON.stringify({ amount: invoice.amount.toString(), type: invoice.type }),
-         });
+        await createAuditLog({
+          userId: session.user.id,
+          action: "CREATE_INVOICE",
+          title: `${invoice.invoiceNumber} (${invoice.project.title})`,
+          entityType: "INVOICE",
+          entityId: invoice.id,
+          newValue: JSON.stringify({ amount: invoice.amount.toString(), type: invoice.type }),
+          organizationId: orgId,
+        });
       }
     } catch (e) {
-      console.error(e)
+      console.error(e);
     }
 
     return NextResponse.json(invoice, { status: 201 });

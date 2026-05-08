@@ -9,6 +9,7 @@ export async function POST(request: Request) {
   try {
     const session = await auth();
     if (!session) return new NextResponse("Unauthorized", { status: 401 });
+    const orgId = session.user.activeOrganizationId!;
     const json = await request.json();
     const { projectId } = json;
 
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
     }
 
     const project = await prisma.project.findUnique({
-      where: { id: projectId },
+      where: { id: projectId, organizationId: orgId },
       include: { client: true, invoices: true, items: true },
     });
 
@@ -57,8 +58,8 @@ export async function POST(request: Request) {
     }
 
     // --- Subscription Gate Check ---
-    const { checkLimit, incrementUsage } = await import("@/lib/billing/subscription");
-    const limitCheck = await checkLimit(session.user.id, "invoicesPerMonth");
+    const { checkOrgLimit, incrementOrgUsage } = await import("@/lib/billing/subscription");
+    const limitCheck = await checkOrgLimit(orgId, "invoicesPerMonth");
     if (!limitCheck.allowed) {
       return NextResponse.json(
         { error: "Plan limit reached", limitCheck },
@@ -78,6 +79,7 @@ export async function POST(request: Request) {
 
     const newInvoice = await prisma.invoice.create({
       data: {
+        organizationId: orgId,
         invoiceNumber,
         projectId: project.id,
         type: "FULL_PAYMENT",
@@ -91,7 +93,7 @@ export async function POST(request: Request) {
     });
 
     // --- Subscription Usage Increment ---
-    await incrementUsage(session.user.id, "invoicesCreated");
+    await incrementOrgUsage(orgId, "invoicesCreated");
     // ------------------------------------
 
     const baseUrl = getBaseUrl();

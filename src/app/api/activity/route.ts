@@ -17,6 +17,8 @@ export async function GET(request: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
+    const orgId = session.user.activeOrganizationId!;
+
     const { searchParams } = new URL(request.url);
     const parsed = querySchema.safeParse({
       entityType: searchParams.get("entityType") || undefined,
@@ -35,21 +37,15 @@ export async function GET(request: Request) {
     const { entityType, entityId, page, limit } = parsed.data;
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { organizationId: orgId };
     if (entityType) where.entityType = entityType;
     if (entityId) where.entityId = entityId;
 
     const [logs, total] = await Promise.all([
-      prisma.auditLog.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: limit,
-      }),
+      prisma.auditLog.findMany({ where, orderBy: { createdAt: "desc" }, skip, take: limit }),
       prisma.auditLog.count({ where }),
     ]);
 
-    // Enrich with user names
     const userIds = [...new Set(logs.map((l) => l.userId))];
     const users = await prisma.user.findMany({
       where: { id: { in: userIds } },
@@ -77,12 +73,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       logs: enrichedLogs,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (error) {
     console.error("[ACTIVITY_GET]", error);

@@ -8,6 +8,7 @@ interface CreateNotificationParams {
   message: string;
   type: NotificationType;
   linkUrl?: string;
+  organizationId: string;
 }
 
 export async function createNotification({
@@ -15,6 +16,7 @@ export async function createNotification({
   message,
   type,
   linkUrl,
+  organizationId,
 }: CreateNotificationParams) {
   try {
     const notification = await prisma.notification.create({
@@ -23,6 +25,7 @@ export async function createNotification({
         message,
         type,
         linkUrl,
+        organizationId,
       },
     });
 

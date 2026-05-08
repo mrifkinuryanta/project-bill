@@ -12,6 +12,7 @@ export async function POST(
   try {
     const session = await auth();
     if (!session) return new NextResponse("Unauthorized", { status: 401 });
+    const orgId = session.user.activeOrganizationId!;
     
     // Only admins or authorized staff should mark invoices as paid manually
     if (session.user.role !== "ADMIN") {
@@ -23,7 +24,7 @@ export async function POST(
 
     // Check if invoice exists and is unpaid
     const existingInvoice = await prisma.invoice.findUnique({
-      where: { id },
+      where: { id, organizationId: orgId },
       include: {
         project: { include: { client: true } },
       },
@@ -55,6 +56,7 @@ export async function POST(
     if (session?.user?.id) {
       await createAuditLog({
         userId: session.user.id,
+        organizationId: orgId,
         action: "INVOICE_MARKED_PAID_MANUALLY",
         title: `${existingInvoice.invoiceNumber} (${project.title})`,
         entityType: "INVOICE",
@@ -70,6 +72,7 @@ export async function POST(
       message: `Manual payment received for invoice ${existingInvoice.invoiceNumber} (${client.name} - ${project.title}) amounting to ${amountStr}.`,
       type: "payment",
       linkUrl: `/invoices/${id}`,
+      organizationId: orgId,
     }).catch(console.error);
 
     return NextResponse.json({ success: true, invoice: updatedInvoice });

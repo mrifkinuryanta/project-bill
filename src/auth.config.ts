@@ -5,12 +5,14 @@ declare module "next-auth" {
     user: {
       id: string;
       role?: string;
+      activeOrganizationId?: string;
     } & DefaultSession["user"];
   }
 
   interface User {
     id: string;
     role?: string;
+    defaultOrganizationId?: string;
   }
 }
 
@@ -21,15 +23,14 @@ export const authConfig = {
     signIn: "/login",
   },
   callbacks: {
-    async jwt({ token, user, profile, account }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.activeOrganizationId = user.defaultOrganizationId;
       }
-      // Handle Casdoor profile role mapping if available
-      if (profile && account?.provider === "casdoor") {
-        const casdoorProfile = profile as any;
-        token.role = casdoorProfile.role === "admin" ? "admin" : "staff";
+      if (trigger === "update" && (session as any)?.activeOrganizationId) {
+        token.activeOrganizationId = (session as any).activeOrganizationId;
       }
       return token;
     },
@@ -37,6 +38,7 @@ export const authConfig = {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
+        session.user.activeOrganizationId = token.activeOrganizationId as string | undefined;
       }
       return session;
     },

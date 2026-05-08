@@ -10,6 +10,7 @@ export interface AuditLogParams {
   field?: string;
   oldValue?: string;
   newValue?: string;
+  organizationId: string;
 }
 
 /**
@@ -28,6 +29,7 @@ export async function createAuditLog(params: AuditLogParams) {
         field: params.field ?? undefined,
         oldValue: params.oldValue ?? undefined,
         newValue: params.newValue ?? undefined,
+        organizationId: params.organizationId,
       },
     });
 

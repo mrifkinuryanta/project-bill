@@ -41,11 +41,12 @@ export default async function DashboardLayout({
     select: { name: true, email: true, onboardingCompleted: true },
   });
 
-  const settings = await prisma.settings.findUnique({
-    where: { id: "global" },
+  const settings = await prisma.settings.findFirst({
+    where: { organizationId: session.user.activeOrganizationId },
   });
 
   const clients = await prisma.client.findMany({
+    where: { organizationId: session.user.activeOrganizationId },
     orderBy: { createdAt: "desc" },
     select: { id: true, name: true },
   });
@@ -67,8 +68,7 @@ export default async function DashboardLayout({
           {children}
         </main>
       </SidebarInset>
-      
-      {/* Onboarding Wizard Modal */}
+
       {dbUser && dbUser.onboardingCompleted === false && (
         <OnboardingModal
           isOpen={true}

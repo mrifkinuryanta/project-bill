@@ -1,33 +1,29 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { createAuditLog } from "@/lib/audit-logger";
 import { encrypt, decrypt, maskSecret, isMaskedValue } from "@/lib/crypto";
 
-// Fields that contain sensitive API keys
 const SENSITIVE_FIELDS = ["resendApiKey", "mayarApiKey", "mayarWebhookSecret"] as const;
-type SensitiveField = typeof SENSITIVE_FIELDS[number];
 
 export async function GET() {
   try {
     const session = await auth();
     if (!session) return new NextResponse("Unauthorized", { status: 401 });
     if (session.user.role !== "ADMIN") return new NextResponse("Forbidden", { status: 403 });
-    // We enforce a single config row with id = "global"
-    let settings = await prisma.settings.findUnique({
-      where: { id: "global" },
+
+    const orgId = session.user.activeOrganizationId!;
+
+    let settings = await prisma.settings.findFirst({
+      where: { organizationId: orgId },
     });
 
-    // If it doesn't exist, create default
     if (!settings) {
       settings = await prisma.settings.create({
-        data: {
-          id: "global",
-          companyName: "ProjectBill",
-        },
+        data: { companyName: "ProjectBill", organizationId: orgId },
       });
     }
 
-    // Decrypt and mask sensitive fields before sending to the client
     const response = {
       ...settings,
       resendApiKey: maskSecret(settings.resendApiKey ? decrypt(settings.resendApiKey) : null),
@@ -47,51 +43,33 @@ export async function PUT(req: Request) {
     const session = await auth();
     if (!session) return new NextResponse("Unauthorized", { status: 401 });
     if (session.user.role !== "ADMIN") return new NextResponse("Forbidden", { status: 403 });
+
+    const orgId = session.user.activeOrganizationId!;
     const body = await req.json();
 
-    const parsedBody = body as {
-      companyName: string;
-      companyAddress?: string | null;
-      companyEmail?: string | null;
-      senderEmail?: string | null;
-      companyLogoUrl?: string | null;
-      companyWhatsApp?: string | null;
-      resendApiKey?: string | null;
-      mayarApiKey?: string | null;
-      mayarWebhookSecret?: string | null;
-      bankName?: string | null;
-      bankAccountName?: string | null;
-      bankAccountNumber?: string | null;
-    };
-
-    // Fetch current settings to compare for audit log
-    const currentSettings = await prisma.settings.findUnique({
-      where: { id: "global" },
+    const currentSettings = await prisma.settings.findFirst({
+      where: { organizationId: orgId },
     });
 
-    // Build the data object, handling encryption for sensitive fields
     const dataToUpdate: Record<string, string | null | undefined> = {
-      companyName: parsedBody.companyName,
-      companyAddress: parsedBody.companyAddress,
-      companyEmail: parsedBody.companyEmail,
-      senderEmail: parsedBody.senderEmail,
-      companyLogoUrl: parsedBody.companyLogoUrl,
-      companyWhatsApp: parsedBody.companyWhatsApp,
-      bankName: parsedBody.bankName,
-      bankAccountName: parsedBody.bankAccountName,
-      bankAccountNumber: parsedBody.bankAccountNumber,
+      companyName: body.companyName,
+      companyAddress: body.companyAddress,
+      companyEmail: body.companyEmail,
+      senderEmail: body.senderEmail,
+      companyLogoUrl: body.companyLogoUrl,
+      companyWhatsApp: body.companyWhatsApp,
+      bankName: body.bankName,
+      bankAccountName: body.bankAccountName,
+      bankAccountNumber: body.bankAccountNumber,
     };
 
-    // Process sensitive fields: skip if masked (unchanged), encrypt if new value
     const auditEntries: { field: string; oldValue: string | null; newValue: string | null }[] = [];
 
     for (const field of SENSITIVE_FIELDS) {
-      const newValue = parsedBody[field];
+      const newValue = body[field];
       const currentEncryptedValue = currentSettings?.[field] ?? null;
 
       if (newValue === undefined || (typeof newValue === "string" && isMaskedValue(newValue))) {
-        // User didn't change this field — keep existing value
-        // Don't include in dataToUpdate, so Prisma won't touch it
         continue;
       }
 
@@ -99,39 +77,34 @@ export async function PUT(req: Request) {
         dataToUpdate[field] = null;
         const oldDecrypted = currentEncryptedValue ? decrypt(currentEncryptedValue) : null;
         if (oldDecrypted) {
-          auditEntries.push({
-            field,
-            oldValue: maskSecret(oldDecrypted),
-            newValue: null,
-          });
+          auditEntries.push({ field, oldValue: maskSecret(oldDecrypted), newValue: null });
         }
         continue;
       }
 
-      // User provided a new plaintext key — encrypt it
       const encryptedNewValue = encrypt(newValue);
       dataToUpdate[field] = encryptedNewValue;
 
-      // Build audit log entry
       const oldDecrypted = currentEncryptedValue ? decrypt(currentEncryptedValue) : null;
-      auditEntries.push({
-        field,
-        oldValue: maskSecret(oldDecrypted),
-        newValue: maskSecret(newValue),
+      auditEntries.push({ field, oldValue: maskSecret(oldDecrypted), newValue: maskSecret(newValue) });
+    }
+
+    let settings: any;
+    if (currentSettings?.id) {
+      settings = await prisma.settings.update({
+        where: { id: currentSettings.id },
+        data: dataToUpdate,
+      });
+    } else {
+      settings = await prisma.settings.create({
+        data: {
+          ...dataToUpdate,
+          companyName: (dataToUpdate.companyName as string) || "ProjectBill",
+          organizationId: orgId,
+        } as any,
       });
     }
 
-    const settings = await prisma.settings.upsert({
-      where: { id: "global" },
-      update: dataToUpdate,
-      create: {
-        id: "global",
-        ...dataToUpdate,
-        companyName: dataToUpdate.companyName as string || "ProjectBill",
-      } as any,
-    });
-
-    // Write audit log entries for sensitive field changes
     const userId = session.user?.id || session.user?.email || "unknown";
 
     if (auditEntries.length > 0) {
@@ -141,35 +114,15 @@ export async function PUT(req: Request) {
           userId,
           action: "settings.update",
           entityType: "SETTINGS",
-          entityId: "global",
+          entityId: settings.id,
           field: entry.field,
           oldValue: entry.oldValue ?? undefined,
           newValue: entry.newValue ?? undefined,
+          organizationId: orgId,
         });
       }
     }
 
-    // Also log a general settings update for non-sensitive field changes
-    const nonSensitiveChanged = currentSettings && (
-      currentSettings.companyName !== parsedBody.companyName ||
-      currentSettings.companyAddress !== (parsedBody.companyAddress ?? null) ||
-      currentSettings.companyEmail !== (parsedBody.companyEmail ?? null) ||
-      currentSettings.bankName !== (parsedBody.bankName ?? null)
-    );
-
-    if (nonSensitiveChanged) {
-      const { createAuditLog } = await import("@/lib/audit-logger");
-      await createAuditLog({
-        userId,
-        action: "settings.update",
-        entityType: "SETTINGS",
-        entityId: "global",
-        oldValue: currentSettings.companyName,
-        newValue: parsedBody.companyName,
-      });
-    }
-
-    // Return masked response
     const response = {
       ...settings,
       resendApiKey: maskSecret(settings.resendApiKey ? decrypt(settings.resendApiKey) : null),

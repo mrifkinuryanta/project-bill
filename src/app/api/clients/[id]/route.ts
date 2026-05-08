@@ -15,10 +15,18 @@ export async function PATCH(
     const json = await request.json();
     const { name, email, phone } = json;
 
-    const existing = await prisma.client.findUnique({ where: { id } });
+    const orgId = session.user.activeOrganizationId!;
+
+    const existing = await prisma.client.findFirst({
+      where: { id, organizationId: orgId },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Client not found" }, { status: 404 });
+    }
 
     const client = await prisma.client.update({
-      where: { id },
+      where: { id, organizationId: orgId },
       data: { name, email, phone },
     });
 
@@ -29,6 +37,7 @@ export async function PATCH(
       entityId: id,
       oldValue: existing?.name || undefined,
       newValue: name || undefined,
+      organizationId: orgId,
     });
 
     return NextResponse.json(client);
@@ -51,9 +60,10 @@ export async function DELETE(
     const resolvedParams = await params;
     const id = resolvedParams.id;
 
-    // Check for paid invoices
-    const clientWithInvoices = await prisma.client.findUnique({
-      where: { id },
+    const orgId = session.user.activeOrganizationId!;
+
+    const clientWithInvoices = await prisma.client.findFirst({
+      where: { id, organizationId: orgId },
       include: {
         projects: {
           include: { invoices: true },
@@ -70,15 +80,13 @@ export async function DELETE(
     );
 
     if (hasPaidInvoices) {
-      // Soft Delete
       await prisma.client.update({
-        where: { id },
+        where: { id, organizationId: orgId },
         data: { isArchived: true },
       });
     } else {
-      // Hard Delete
       await prisma.client.delete({
-        where: { id },
+        where: { id, organizationId: orgId },
       });
     }
 
@@ -88,6 +96,7 @@ export async function DELETE(
       entityType: "CLIENT",
       entityId: id,
       oldValue: clientWithInvoices.name,
+      organizationId: orgId,
     });
 
     return new NextResponse(null, { status: 204 });

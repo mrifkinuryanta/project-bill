@@ -27,35 +27,56 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const casdoorProfile = profile as any;
         const role = casdoorProfile?.role === "admin" ? "admin" : "staff";
 
-        if (!existingUser) {
-          await prisma.user.create({
-            data: {
-              email: user.email,
-              name:
-                user.name ||
-                casdoorProfile?.name ||
-                user.email.split("@")[0],
-              password: "OIDC_MANAGED_USER",
-              role: role,
-              onboardingCompleted: false,
-              subscription: {
-                create: {
-                  plan: "starter",
-                  status: "active",
-                  trialStartedAt: new Date(),
-                  trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-                  currentPeriodEnd: new Date(
-                    Date.now() + 14 * 24 * 60 * 60 * 1000,
-                  ),
+          if (!existingUser) {
+            const createdUser = await prisma.user.create({
+              data: {
+                email: user.email,
+                name: user.name || casdoorProfile?.name || user.email.split("@")[0],
+                password: "OIDC_MANAGED_USER",
+                role: role,
+                onboardingCompleted: false,
+                subscription: {
+                  create: {
+                    plan: "starter",
+                    status: "active",
+                    trialStartedAt: new Date(),
+                    trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+                    currentPeriodEnd: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+                  },
                 },
               },
-            },
-          });
-        } else {
+            });
+
+            const slug = Math.random().toString(36).substring(2, 12);
+            const org = await prisma.organization.create({
+              data: { name: createdUser.name || "My Workspace", slug },
+            });
+            await prisma.organizationMember.create({
+              data: { userId: createdUser.id, organizationId: org.id, role: "OWNER" },
+            });
+            await prisma.user.update({
+              where: { id: createdUser.id },
+              data: { defaultOrganizationId: org.id },
+            });
+          } else {
           if (existingUser.role !== role) {
             await prisma.user.update({
               where: { id: existingUser.id },
               data: { role: role },
+            });
+          }
+
+          if (!existingUser.defaultOrganizationId) {
+            const slug = Math.random().toString(36).substring(2, 12);
+            const org = await prisma.organization.create({
+              data: { name: existingUser.name || "My Workspace", slug },
+            });
+            await prisma.organizationMember.create({
+              data: { userId: existingUser.id, organizationId: org.id, role: "OWNER" },
+            });
+            await prisma.user.update({
+              where: { id: existingUser.id },
+              data: { defaultOrganizationId: org.id },
             });
           }
         }
@@ -118,6 +139,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 email: user.email,
                 name: user.name,
                 role: user.role,
+                defaultOrganizationId: user.defaultOrganizationId || undefined,
               };
             },
           }),

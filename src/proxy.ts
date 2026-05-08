@@ -1,16 +1,15 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 
-// Public routes that don't require authentication
 const PUBLIC_PATHS = [
   "/login",
   "/setup",
-  "/api/auth",        // NextAuth callback routes
-  "/api/webhooks",    // External webhooks (Mayar, etc.)
-  "/invoices",        // Public invoice view: /invoices/[id]
+  "/api/auth",
+  "/api/webhooks",
+  "/api/setup",
+  "/invoices",
 ];
 
-// API routes that need auth check (return 401 instead of redirect)
 const API_PREFIX = "/api/";
 
 function isPublicPath(pathname: string): boolean {
@@ -19,16 +18,18 @@ function isPublicPath(pathname: string): boolean {
   );
 }
 
+function isSelfHosted(): boolean {
+  return process.env.DEPLOYMENT_MODE !== "managed";
+}
+
 export default auth((req) => {
   const { pathname } = req.nextUrl;
   const isLoggedIn = !!req.auth;
 
-  // Allow public paths
   if (isPublicPath(pathname)) {
     return NextResponse.next();
   }
 
-  // API routes: return 401 if not authenticated
   if (pathname.startsWith(API_PREFIX)) {
     if (!isLoggedIn) {
       return NextResponse.json(
@@ -36,10 +37,15 @@ export default auth((req) => {
         { status: 401 }
       );
     }
+    if (!isSelfHosted() && !req.auth?.user?.activeOrganizationId) {
+      return NextResponse.json(
+        { error: "No active organization" },
+        { status: 403 }
+      );
+    }
     return NextResponse.next();
   }
 
-  // Dashboard routes: redirect to /login if not authenticated
   if (!isLoggedIn) {
     const loginUrl = new URL("/login", req.nextUrl.origin);
     loginUrl.searchParams.set("callbackUrl", pathname);
@@ -49,16 +55,8 @@ export default auth((req) => {
   return NextResponse.next();
 });
 
-// Matcher: run middleware on all routes except static assets
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization)
-     * - favicon.ico
-     * - public folder files (images, etc.)
-     */
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

@@ -9,10 +9,11 @@ export async function DELETE(
   try {
     const session = await auth();
     if (!session) return new NextResponse("Unauthorized", { status: 401 });
+    const orgId = session.user.activeOrganizationId!;
     const { id: projectId, itemId } = await params;
 
     const item = await prisma.projectItem.findUnique({
-      where: { id: itemId },
+      where: { id: itemId, organizationId: orgId },
     });
 
     if (!item) {
@@ -27,7 +28,7 @@ export async function DELETE(
     }
 
     const project = await prisma.project.findUnique({
-      where: { id: projectId },
+      where: { id: projectId, organizationId: orgId },
       include: { invoices: true },
     });
 

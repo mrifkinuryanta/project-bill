@@ -9,6 +9,7 @@ export async function POST(
   try {
     const session = await auth();
     if (!session) return new NextResponse("Unauthorized", { status: 401 });
+    const orgId = session.user.activeOrganizationId!;
     const { id: projectId } = await params;
     const json = await request.json();
     const { description, price } = json;
@@ -53,6 +54,7 @@ export async function POST(
     const [newItem, updatedProject] = await prisma.$transaction([
       prisma.projectItem.create({
         data: {
+          organizationId: orgId,
           projectId,
           description,
           price: numericPrice,
@@ -61,7 +63,7 @@ export async function POST(
         },
       }),
       prisma.project.update({
-        where: { id: projectId },
+      where: { id: projectId, organizationId: orgId },
         data: {
           totalPrice: {
             increment: numericPrice,

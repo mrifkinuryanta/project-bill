@@ -56,6 +56,100 @@ export const PLAN_PRICING = {
   business:{ monthly: 179_000, yearly: 1_790_000 },
 } as const;
 
+// ── Organization-Level Helpers ─────────────────────────────────
+
+export async function getOrgOwnerId(organizationId: string): Promise<string | null> {
+  const owner = await prisma.organizationMember.findFirst({
+    where: { organizationId, role: "OWNER" },
+  });
+  return owner?.userId ?? null;
+}
+
+export async function checkOrgLimit(
+  organizationId: string,
+  resource: ResourceType
+): Promise<LimitCheckResult> {
+  if (isSelfHosted()) {
+    return { allowed: true, current: 0, limit: Infinity, plan: "business" };
+  }
+
+  const ownerId = await getOrgOwnerId(organizationId);
+  if (!ownerId) {
+    return { allowed: false, current: 0, limit: 0, plan: "starter" };
+  }
+
+  const sub = await getSubscription(ownerId);
+  const planName = sub.plan as PlanType;
+  const limits = PLAN_LIMITS[planName] || PLAN_LIMITS.starter;
+
+  if (typeof limits[resource] === "boolean") {
+    return { allowed: limits[resource] as boolean, current: 0, limit: 1, plan: planName };
+  }
+
+  let current = 0;
+  const limit = typeof limits[resource] === "number" ? limits[resource] as number : Infinity;
+
+  switch (resource) {
+    case "clients":
+      current = await prisma.client.count({
+        where: { organizationId, isArchived: false },
+      });
+      break;
+    case "activeProjects":
+      current = await prisma.project.count({
+        where: { organizationId, status: { not: "DONE" } },
+      });
+      break;
+    case "recurringTemplates":
+      current = await prisma.recurringInvoice.count({
+        where: { organizationId, isActive: true },
+      });
+      break;
+    case "sowTemplates":
+      current = await prisma.sOWTemplate.count({
+        where: { organizationId },
+      });
+      break;
+    case "teamMembers":
+      current = await prisma.organizationMember.count({
+        where: { organizationId },
+      });
+      break;
+    case "invoicesPerMonth":
+      current = sub.invoicesCreated;
+      break;
+    case "emailsPerMonth":
+      current = sub.emailsSent;
+      break;
+    case "paymentLinksPerMonth":
+      current = sub.paymentLinksUsed;
+      break;
+  }
+
+  return { allowed: current < limit, current, limit, plan: planName };
+}
+
+export async function incrementOrgUsage(
+  organizationId: string,
+  field: UsageCounterField,
+  amount: number = 1
+): Promise<void> {
+  if (isSelfHosted()) return;
+
+  const ownerId = await getOrgOwnerId(organizationId);
+  if (!ownerId) return;
+
+  try {
+    await getSubscription(ownerId);
+    await prisma.subscription.update({
+      where: { userId: ownerId },
+      data: { [field]: { increment: amount } },
+    });
+  } catch (error) {
+    console.error(`Failed to increment org usage for ${organizationId} [${field}]:`, error);
+  }
+}
+
 // ── Environment Checks ────────────────────────────────────────
 
 export function isSelfHosted(): boolean {
