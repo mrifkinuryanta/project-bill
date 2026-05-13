@@ -39,9 +39,10 @@ export async function POST(request: Request) {
       amount: price,
       customerName: user.name || "Customer",
       customerEmail: user.email || "",
-      customerMobile: "08000000000", // Fallback mobile
+      customerMobile: "08000000000",
       description: `ProjectBill - Upgrade to ${plan.toUpperCase()} (${billing})`,
       redirectUrl: `${baseUrl}/settings/subscription?success=true`,
+      organizationId: session.user.activeOrganizationId!,
     });
 
     // Save payment intent

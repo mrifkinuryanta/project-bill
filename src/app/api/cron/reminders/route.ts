@@ -109,6 +109,7 @@ export async function GET(request: Request) {
           reminderType,
           lateFeeAmountStr,
           lang: invoice.project.language as "id" | "en",
+          organizationId: invoice.organizationId,
         });
 
         if (emailResult.success) {
@@ -143,6 +144,7 @@ export async function GET(request: Request) {
           reminderType,
           lateFeeAmountStr,
           lang: invoice.project.language as "id" | "en",
+          organizationId: invoice.organizationId,
         });
 
         if (emailResult.success) {

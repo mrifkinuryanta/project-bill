@@ -32,8 +32,8 @@ export async function POST(
     }
 
     // 1. Check if the project exists
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, organizationId: orgId },
       include: { invoices: true },
     });
 

@@ -8,11 +8,14 @@ import type {
   StatsSummary,
 } from "./types";
 
-export async function buildBusinessContext(): Promise<BusinessContext> {
-  const settings = await prisma.settings.findUnique({
-    where: { id: "global" },
-    select: { companyName: true, companyEmail: true, companyLogoUrl: true },
-  });
+export async function buildBusinessContext(organizationId?: string): Promise<BusinessContext> {
+  const orgFilter = organizationId ? { organizationId } : {};
+  const settings = organizationId
+    ? await prisma.settings.findFirst({
+        where: { organizationId },
+        select: { companyName: true, companyEmail: true, companyLogoUrl: true },
+      })
+    : null;
 
   const clientCount = await prisma.client.count({ where: { isArchived: false } });
   const activeProjectCount = await prisma.project.count({ where: { status: { not: "done" } } });

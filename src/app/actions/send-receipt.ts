@@ -10,14 +10,15 @@ import { formatMoney } from "@/lib/currency";
 export async function sendReceiptEmail(invoiceId: string) {
   const session = await auth();
   if (!session) throw new Error("Unauthorized");
+
+  const orgId = session.user.activeOrganizationId!;
+
   try {
-    const invoice = await prisma.invoice.findUnique({
-      where: { id: invoiceId },
+    const invoice = await prisma.invoice.findFirst({
+      where: { id: invoiceId, organizationId: orgId },
       include: {
         project: {
-          include: {
-            client: true
-          }
+          include: { client: true }
         }
       }
     })
@@ -53,6 +54,7 @@ export async function sendReceiptEmail(invoiceId: string) {
             sowPdfBuffer,
             invoicePdfBuffer,
             lang: project.language as "id" | "en",
+            organizationId: orgId,
         });
 
         console.log(`[SEND_RECEIPT] Email send result:`, result);
@@ -60,24 +62,24 @@ export async function sendReceiptEmail(invoiceId: string) {
         if (!result.success && result.error) {
            throw result.error;
         }
-        
+
         let mailtoData = undefined;
         if (result.mocked) {
            const subject = project.language === "en"
                ? `Payment Receipt [${invoice.invoiceNumber}] for ${project.title}`
                : `Kuitansi Pembayaran [${invoice.invoiceNumber}] untuk ${project.title}`;
-           
+
            const body = project.language === "en"
                ? `Hello ${client.name},\n\We have received your payment for the amount of ${amountStr}.\n\nPlease find your official receipt detail here:\n${invoiceDetailUrl}\n\nThank you!`
                : `Halo ${client.name},\n\nKami telah menerima pembayaran Anda sebesar ${amountStr}.\n\nBerikut adalah detail kuitansi resmi Anda:\n${invoiceDetailUrl}\n\nTerima kasih!`;
-           
+
            mailtoData = { to: client.email!, subject, body };
         }
-        
-        return { 
-          success: true, 
-          manual: result.mocked, 
-          message: result.mocked ? "Select your preferred email provider..." : undefined, 
+
+        return {
+          success: true,
+          manual: result.mocked,
+          message: result.mocked ? "Select your preferred email provider..." : undefined,
           invoiceLink: result.mocked ? invoiceDetailUrl : undefined,
           mailtoData
         }

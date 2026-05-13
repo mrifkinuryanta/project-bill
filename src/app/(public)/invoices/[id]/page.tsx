@@ -83,8 +83,10 @@ export default async function InvoiceViewPage(props: {
     },
   });
 
-  const settings = (await prisma.settings.findUnique({
-    where: { id: "global" },
+  if (!invoice) return notFound();
+
+  const settings = (await prisma.settings.findFirst({
+    where: { organizationId: invoice.organizationId },
   })) || {
     companyName: "ProjectBill",
     companyAddress: null,
@@ -96,8 +98,6 @@ export default async function InvoiceViewPage(props: {
     companyWhatsApp: null,
     mayarApiKey: null,
   };
-
-  if (!invoice) return notFound();
 
   const lang = invoice.project.language === "id" ? "id" : "en";
   const t = TRANSLATIONS[lang];

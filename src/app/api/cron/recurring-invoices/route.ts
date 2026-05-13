@@ -84,8 +84,8 @@ export async function GET(request: Request) {
                     }
                 }
 
-                // Generate invoice number outside of strict transaction to avoid long locking string pools (less of a concern but good practice)
-                const invoiceNumber = await generateInvoiceNumber();
+                // Generate invoice number outside of strict transaction
+                const invoiceNumber = await generateInvoiceNumber(template.project.organizationId);
                 const dueDate = new Date();
                 dueDate.setDate(dueDate.getDate() + 7);
 

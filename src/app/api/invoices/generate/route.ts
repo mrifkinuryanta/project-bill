@@ -75,7 +75,7 @@ export async function POST(request: Request) {
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 7);
 
-    const invoiceNumber = await generateInvoiceNumber();
+    const invoiceNumber = await generateInvoiceNumber(orgId);
 
     const newInvoice = await prisma.invoice.create({
       data: {

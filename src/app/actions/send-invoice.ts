@@ -14,21 +14,22 @@ export async function sendInvoiceEmail(
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
-  const { checkLimit, incrementUsage } = await import("@/lib/billing/subscription");
+  const orgId = session.user.activeOrganizationId!;
+
+  const { checkOrgLimit, incrementOrgUsage } = await import("@/lib/billing/subscription");
 
   try {
-    // --- Subscription Gate Check ---
-    const limitCheck = await checkLimit(session.user.id, "emailsPerMonth");
+    const limitCheck = await checkOrgLimit(orgId, "emailsPerMonth");
     if (!limitCheck.allowed) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: "Monthly email limit reached. Please upgrade your plan.",
-        limitCheck 
+        limitCheck
       };
     }
-    // -------------------------------
-    const invoice = await prisma.invoice.findUnique({
-      where: { id: invoiceId },
+
+    const invoice = await prisma.invoice.findFirst({
+      where: { id: invoiceId, organizationId: orgId },
       include: {
         project: {
           include: {
@@ -49,7 +50,6 @@ export async function sendInvoiceEmail(
     const baseUrl = getBaseUrl();
     const invoiceDetailUrl = `${baseUrl}/invoices/${invoice.id}`;
 
-    // Fix potential issue where resend API keys fail silently
     try {
         let result;
 
@@ -64,6 +64,7 @@ export async function sendInvoiceEmail(
             invoiceLink: invoiceDetailUrl,
             description: customNotes || invoice.notes,
             lang: project.language as "id" | "en",
+            organizationId: orgId,
           });
         } else {
           result = await baseSendInvoiceEmail({
@@ -75,23 +76,22 @@ export async function sendInvoiceEmail(
             amountStr: amountStr,
             invoiceLink: invoiceDetailUrl,
             lang: project.language as "id" | "en",
+            organizationId: orgId,
           });
         }
 
         if (result.success && !result.mocked) {
           await prisma.invoice.update({
-             where: { id: invoiceId },
+             where: { id: invoiceId, organizationId: orgId },
              data: { emailStatus: 'SENT' }
           });
-          // --- Subscription Usage Increment ---
-          await incrementUsage(session.user.id, "emailsSent");
-          // ------------------------------------
+          await incrementOrgUsage(orgId, "emailsSent");
         }
 
         if (!result.success && result.error) {
            throw result.error;
         }
-        
+
         let mailtoData = undefined;
         if (result.mocked) {
            let subject = "";
@@ -101,7 +101,7 @@ export async function sendInvoiceEmail(
                subject = project.language === "en"
                    ? `Recurring Invoice [${invoice.invoiceNumber}] for ${project.title} - Action Required`
                    : `Tagihan Rutin [${invoice.invoiceNumber}] untuk ${project.title} - Diperlukan Tindakan`;
-               
+
                body = project.language === "en"
                    ? `Hello ${client.name},\n\nPlease find your recurring invoice detail here:\n${invoiceDetailUrl}\n\nAmount due: ${amountStr}\n\nThank you!`
                    : `Halo ${client.name},\n\nBerikut adalah detail tagihan rutin Anda:\n${invoiceDetailUrl}\n\nTotal tagihan: ${amountStr}\n\nTerima kasih!`;
@@ -109,27 +109,26 @@ export async function sendInvoiceEmail(
                subject = project.language === "en"
                    ? `Invoice [${invoice.invoiceNumber}] for ${project.title} - Action Required`
                    : `Invoice [${invoice.invoiceNumber}] untuk ${project.title} - Diperlukan Tindakan`;
-               
+
                body = project.language === "en"
                    ? `Hello ${client.name},\n\nPlease find your invoice detail here:\n${invoiceDetailUrl}\n\nAmount due: ${amountStr}\n\nThank you!`
                    : `Halo ${client.name},\n\nBerikut adalah detail tagihan Anda:\n${invoiceDetailUrl}\n\nTotal tagihan: ${amountStr}\n\nTerima kasih!`;
            }
-           
+
            mailtoData = { to: client.email!, subject, body };
         }
-        
-        return { 
-          success: true, 
-          manual: result.mocked, 
-          message: result.mocked ? "Select your preferred email provider..." : undefined, 
+
+        return {
+          success: true,
+          manual: result.mocked,
+          message: result.mocked ? "Select your preferred email provider..." : undefined,
           invoiceLink: result.mocked ? invoiceDetailUrl : undefined,
           mailtoData
         }
     } catch (emailError: any) {
         console.error("Failed to send email via Resend:", emailError);
-        // Set status to failed
         await prisma.invoice.update({
-          where: { id: invoiceId },
+          where: { id: invoiceId, organizationId: orgId },
           data: { emailStatus: 'FAILED' }
         });
         return { success: false, error: emailError?.message || "Failed to send email" }

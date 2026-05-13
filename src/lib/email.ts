@@ -11,17 +11,15 @@ import type { CompanyInfo, Language } from "@/emails/EmailLayout";
 
 export type { ReminderType };
 
-// ── Fetch Company Settings ────────────────────────────────────
-
 export interface CompanySettings extends CompanyInfo {
   resendApiKey?: string;
   senderEmail?: string | null;
 }
 
-export async function getCompanySettings(): Promise<CompanySettings> {
+export async function getCompanySettings(organizationId: string): Promise<CompanySettings> {
   try {
-    const settings = await prisma.settings.findUnique({
-      where: { id: "global" },
+    const settings = await prisma.settings.findFirst({
+      where: { organizationId },
     });
     return {
       companyName: settings?.companyName || "ProjectBill",
@@ -47,10 +45,8 @@ function getSenderFrom(companyName: string, senderEmail?: string | null): string
   if (senderEmail && senderEmail.trim() !== "") {
     return `${companyName} <${senderEmail.trim()}>`;
   }
-  return `${companyName} <noreply@projectbill.mrndev.me>`; // Custom domain email
+  return `${companyName} <noreply@projectbill.mrndev.me>`;
 }
-
-// ── Invoice Email ─────────────────────────────────────────────
 
 export interface SendInvoiceEmailParams {
   to: string;
@@ -61,22 +57,20 @@ export interface SendInvoiceEmailParams {
   amountStr: string;
   invoiceLink: string;
   lang?: Language;
-  userId?: string; // Add userId for subscription tracking
+  organizationId?: string;
 }
 
 export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
-  // --- Subscription Gate Check ---
-  if (params.userId) {
-    const { checkLimit } = await import("@/lib/billing/subscription");
-    const limitCheck = await checkLimit(params.userId, "emailsPerMonth");
+  if (params.organizationId) {
+    const { checkOrgLimit } = await import("@/lib/billing/subscription");
+    const limitCheck = await checkOrgLimit(params.organizationId, "emailsPerMonth");
     if (!limitCheck.allowed) {
-      console.warn(`[SUBSCRIPTION] Email limit reached for user ${params.userId}`);
+      console.warn(`[SUBSCRIPTION] Email limit reached for org ${params.organizationId}`);
       return { success: false, quotaExceeded: true };
     }
   }
-  // -------------------------------
 
-  const settings = await getCompanySettings();
+  const settings = await getCompanySettings(params.organizationId!);
 
   if (!settings.resendApiKey) {
     console.warn("No RESEND_API_KEY found in DB. Mocking email delivery.");
@@ -113,12 +107,10 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
       html,
     });
 
-    // --- Subscription Usage Increment ---
-    if (params.userId) {
-      const { incrementUsage } = await import("@/lib/billing/subscription");
-      await incrementUsage(params.userId, "emailsSent");
+    if (params.organizationId) {
+      const { incrementOrgUsage } = await import("@/lib/billing/subscription");
+      await incrementOrgUsage(params.organizationId, "emailsSent");
     }
-    // ------------------------------------
 
     return { success: true, data };
   } catch (error) {
@@ -126,8 +118,6 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
     return { success: false, error };
   }
 }
-
-// ── Recurring Invoice Email ───────────────────────────────────
 
 export interface SendRecurringInvoiceEmailParams {
   to: string;
@@ -139,22 +129,20 @@ export interface SendRecurringInvoiceEmailParams {
   invoiceLink: string;
   description?: string | null;
   lang?: Language;
-  userId?: string; // Add userId for subscription tracking
+  organizationId?: string;
 }
 
 export async function sendRecurringInvoiceEmail(params: SendRecurringInvoiceEmailParams) {
-  // --- Subscription Gate Check ---
-  if (params.userId) {
-    const { checkLimit } = await import("@/lib/billing/subscription");
-    const limitCheck = await checkLimit(params.userId, "emailsPerMonth");
+  if (params.organizationId) {
+    const { checkOrgLimit } = await import("@/lib/billing/subscription");
+    const limitCheck = await checkOrgLimit(params.organizationId, "emailsPerMonth");
     if (!limitCheck.allowed) {
-      console.warn(`[SUBSCRIPTION] Email limit reached for user ${params.userId}`);
+      console.warn(`[SUBSCRIPTION] Email limit reached for org ${params.organizationId}`);
       return { success: false, quotaExceeded: true };
     }
   }
-  // -------------------------------
 
-  const settings = await getCompanySettings();
+  const settings = await getCompanySettings(params.organizationId!);
 
   if (!settings.resendApiKey) {
     console.warn("No RESEND_API_KEY found in DB. Mocking recurring email delivery.");
@@ -197,12 +185,10 @@ export async function sendRecurringInvoiceEmail(params: SendRecurringInvoiceEmai
       return { success: false, error: error.message };
     }
 
-    // --- Subscription Usage Increment ---
-    if (params.userId) {
-      const { incrementUsage } = await import("@/lib/billing/subscription");
-      await incrementUsage(params.userId, "emailsSent");
+    if (params.organizationId) {
+      const { incrementOrgUsage } = await import("@/lib/billing/subscription");
+      await incrementOrgUsage(params.organizationId, "emailsSent");
     }
-    // ------------------------------------
 
     return { success: true, data };
   } catch (error) {
@@ -210,8 +196,6 @@ export async function sendRecurringInvoiceEmail(params: SendRecurringInvoiceEmai
     return { success: false, error };
   }
 }
-
-// ── Reminder Email ────────────────────────────────────────────
 
 export interface SendReminderEmailParams {
   to: string;
@@ -223,7 +207,7 @@ export interface SendReminderEmailParams {
   reminderType: ReminderType;
   lateFeeAmountStr?: string;
   lang?: Language;
-  userId?: string; // Add userId for subscription tracking
+  organizationId?: string;
 }
 
 const REMINDER_SUBJECTS: Record<ReminderType, Record<Language, (title: string) => string>> = {
@@ -246,20 +230,18 @@ const REMINDER_SUBJECTS: Record<ReminderType, Record<Language, (title: string) =
 };
 
 export async function sendReminderEmail(params: SendReminderEmailParams) {
-  // --- Subscription Gate Check ---
-  if (params.userId) {
-    const { checkLimit } = await import("@/lib/billing/subscription");
-    const limitCheck = await checkLimit(params.userId, "emailsPerMonth");
+  if (params.organizationId) {
+    const { checkOrgLimit } = await import("@/lib/billing/subscription");
+    const limitCheck = await checkOrgLimit(params.organizationId, "emailsPerMonth");
     if (!limitCheck.allowed) {
-      console.warn(`[SUBSCRIPTION] Email limit reached for user ${params.userId}`);
+      console.warn(`[SUBSCRIPTION] Email limit reached for org ${params.organizationId}`);
       return { success: false, quotaExceeded: true };
     }
   }
-  // -------------------------------
 
   const lang = params.lang || "id";
   const subject = REMINDER_SUBJECTS[params.reminderType][lang](params.projectTitle);
-  const settings = await getCompanySettings();
+  const settings = await getCompanySettings(params.organizationId!);
 
   if (!settings.resendApiKey) {
     console.warn("[MOCK REMINDER EMAIL]", params.reminderType);
@@ -296,12 +278,10 @@ export async function sendReminderEmail(params: SendReminderEmailParams) {
       return { success: false, error: error.message };
     }
 
-    // --- Subscription Usage Increment ---
-    if (params.userId) {
-      const { incrementUsage } = await import("@/lib/billing/subscription");
-      await incrementUsage(params.userId, "emailsSent");
+    if (params.organizationId) {
+      const { incrementOrgUsage } = await import("@/lib/billing/subscription");
+      await incrementOrgUsage(params.organizationId, "emailsSent");
     }
-    // ------------------------------------
 
     return { success: true, data };
   } catch (error) {
@@ -309,8 +289,6 @@ export async function sendReminderEmail(params: SendReminderEmailParams) {
     return { success: false, error };
   }
 }
-
-// ── Payment Success Email ─────────────────────────────────────
 
 export interface SendPaymentSuccessEmailParams {
   to: string;
@@ -322,23 +300,21 @@ export interface SendPaymentSuccessEmailParams {
   sowPdfBuffer?: Buffer;
   invoicePdfBuffer?: Buffer;
   lang?: Language;
-  userId?: string; // Add userId for subscription tracking
+  organizationId?: string;
 }
 
 export async function sendPaymentSuccessEmail(params: SendPaymentSuccessEmailParams) {
-  // --- Subscription Gate Check ---
-  if (params.userId) {
-    const { checkLimit } = await import("@/lib/billing/subscription");
-    const limitCheck = await checkLimit(params.userId, "emailsPerMonth");
+  if (params.organizationId) {
+    const { checkOrgLimit } = await import("@/lib/billing/subscription");
+    const limitCheck = await checkOrgLimit(params.organizationId, "emailsPerMonth");
     if (!limitCheck.allowed) {
-      console.warn(`[SUBSCRIPTION] Email limit reached for user ${params.userId}`);
+      console.warn(`[SUBSCRIPTION] Email limit reached for org ${params.organizationId}`);
       return { success: false, quotaExceeded: true };
     }
   }
-  // -------------------------------
 
   const lang = params.lang || "id";
-  const settings = await getCompanySettings();
+  const settings = await getCompanySettings(params.organizationId!);
 
   if (!settings.resendApiKey) {
     console.warn("[MOCK PAYMENT SUCCESS EMAIL]");
@@ -396,16 +372,103 @@ export async function sendPaymentSuccessEmail(params: SendPaymentSuccessEmailPar
       return { success: false, error: error.message };
     }
 
-    // --- Subscription Usage Increment ---
-    if (params.userId) {
-      const { incrementUsage } = await import("@/lib/billing/subscription");
-      await incrementUsage(params.userId, "emailsSent");
+    if (params.organizationId) {
+      const { incrementOrgUsage } = await import("@/lib/billing/subscription");
+      await incrementOrgUsage(params.organizationId, "emailsSent");
     }
-    // ------------------------------------
 
     return { success: true, data };
   } catch (error) {
     console.error("Failed to send payment success email:", error);
+    return { success: false, error };
+  }
+}
+
+export async function sendInviteEmail(params: { to: string; orgName: string; token: string; role: string; organizationId: string }) {
+  const baseUrl = process.env.APP_URL || "http://localhost:3000";
+  const inviteLink = `${baseUrl}/invite/${params.token}`;
+
+  const html = `<div style="font-family:sans-serif;padding:20px">
+    <h2>You've been invited to join ${params.orgName}</h2>
+    <p>You have been invited to join <strong>${params.orgName}</strong> as <strong>${params.role}</strong>.</p>
+    <p><a href="${inviteLink}" style="padding:10px 20px;background:#6366f1;color:white;text-decoration:none;border-radius:6px">Accept Invitation</a></p>
+    <p>This invitation will expire in 7 days.</p>
+  </div>`;
+
+  const settings = await getCompanySettings(params.organizationId);
+  if (!settings.resendApiKey) {
+    console.log(`[MOCK INVITE EMAIL] To: ${params.to} | Link: ${inviteLink}`);
+    return { success: true, mocked: true };
+  }
+  try {
+    const resend = new Resend(settings.resendApiKey);
+    await resend.emails.send({
+      from: getSenderFrom(settings.companyName, settings.senderEmail),
+      to: [params.to],
+      subject: `You've been invited to join ${params.orgName}`,
+      html,
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to send invite email:", error);
+    return { success: false, error };
+  }
+}
+
+export async function sendOrgDeletionEmail(params: { to: string; orgName: string; organizationId: string }) {
+  const html = `<div style="font-family:sans-serif;padding:20px">
+    <h2>Organization Deletion Notice</h2>
+    <p>The organization <strong>${params.orgName}</strong> has been scheduled for deletion by its owner.</p>
+    <p>All data will be permanently deleted after 30 days. If you believe this was a mistake, please contact the organization owner immediately.</p>
+  </div>`;
+
+  const settings = await getCompanySettings(params.organizationId);
+  if (!settings.resendApiKey) {
+    console.log(`[MOCK DELETION EMAIL] To: ${params.to}`);
+    return { success: true, mocked: true };
+  }
+  try {
+    const resend = new Resend(settings.resendApiKey);
+    await resend.emails.send({
+      from: getSenderFrom(settings.companyName, settings.senderEmail),
+      to: [params.to],
+      subject: `Organization Deletion - ${params.orgName}`,
+      html,
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to send deletion email:", error);
+    return { success: false, error };
+  }
+}
+
+export async function sendExportReadyEmail(params: { to: string; orgName: string; downloadUrl: string; organizationId: string }) {
+  const baseUrl = process.env.APP_URL || "http://localhost:3000";
+  const link = `${baseUrl}${params.downloadUrl}`;
+
+  const html = `<div style="font-family:sans-serif;padding:20px">
+    <h2>Data Export Ready</h2>
+    <p>Your data export for <strong>${params.orgName}</strong> is ready.</p>
+    <p><a href="${link}" style="padding:10px 20px;background:#6366f1;color:white;text-decoration:none;border-radius:6px">Download Export</a></p>
+    <p>This link will be available for 24 hours.</p>
+  </div>`;
+
+  const settings = await getCompanySettings(params.organizationId);
+  if (!settings.resendApiKey) {
+    console.log(`[MOCK EXPORT EMAIL] To: ${params.to} | Link: ${link}`);
+    return { success: true, mocked: true };
+  }
+  try {
+    const resend = new Resend(settings.resendApiKey);
+    await resend.emails.send({
+      from: getSenderFrom(settings.companyName, settings.senderEmail),
+      to: [params.to],
+      subject: `Data Export Ready - ${params.orgName}`,
+      html,
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to send export email:", error);
     return { success: false, error };
   }
 }

@@ -1,20 +1,16 @@
 import { prisma } from "./prisma";
 
-export async function generateInvoiceNumber(): Promise<string> {
+export async function generateInvoiceNumber(organizationId: string): Promise<string> {
   const today = new Date();
   const yearMonth = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}`;
   const prefix = `INV-${yearMonth}-`;
 
-  // Find the highest sequence number for this month
   const latestInvoice = await prisma.invoice.findFirst({
     where: {
-      invoiceNumber: {
-        startsWith: prefix,
-      },
+      invoiceNumber: { startsWith: prefix },
+      organizationId,
     },
-    orderBy: {
-      invoiceNumber: "desc",
-    }, // Returns something like INV-202603-0042
+    orderBy: { invoiceNumber: "desc" },
   });
 
   let nextSequence = 1;

@@ -12,6 +12,7 @@ export interface CreatePaymentLinkParams {
   description: string;
   redirectUrl: string;
   expiredAt?: string;
+  organizationId: string;
 }
 
 export interface MayarPaymentLinkResponse {
@@ -22,20 +23,11 @@ export interface MayarPaymentLinkResponse {
 export async function createPaymentLink(
   params: CreatePaymentLinkParams,
 ): Promise<MayarPaymentLinkResponse> {
-  const settings = await prisma.settings.findUnique({ where: { id: "global" } });
+  const settings = await prisma.settings.findFirst({
+    where: { organizationId: params.organizationId },
+  });
   const apiKey = settings?.mayarApiKey ? decrypt(settings.mayarApiKey) : null;
 
-  // --- Subscription Gate Check ---
-  // If the user's ID is known contextually, ideally we pass it in CreatePaymentLinkParams
-  // We'll temporarily use the first admin user's ID for cron jobs/system actions if not passed.
-  // In a robust implementation, the user ID should always be passed down.
-  const adminUser = await prisma.user.findFirst({ where: { role: "ADMIN" } });
-  // Currently the API doesn't pass userId to createPaymentLink, relying on system admin for testing.
-  // So we don't strictly enforce gate here unless we change the signature. 
-  // Let's modify the signature to accept userId below (requiring refactor of callers).
-  // -------------------------------
-
-  // If no API key is provided, we simulate the Mayar API for MVP testing
   if (!apiKey) {
     console.warn("No mayarApiKey provided. Using simulated payment link.");
     return {
@@ -44,8 +36,6 @@ export async function createPaymentLink(
     };
   }
 
-  // Real Mayar API logic would go here
-  // Mayar endpoint for payment links is typically /v1/payment-link
   const response = await fetch(`${MAYAR_API_URL}/payment/create`, {
     method: "POST",
     headers: {
@@ -70,7 +60,6 @@ export async function createPaymentLink(
 
   const data = await response.json();
 
-  // Format adjustment based on Mayar's actual response object
   return {
     link: data.data?.link || data.link || "https://api.mayar.id/hl/v1/pay/mock",
     id: data.data?.id || data.id,
@@ -80,9 +69,25 @@ export async function createPaymentLink(
 export async function verifyMayarWebhook(
   payload: string,
   signature: string,
+  organizationId?: string,
 ): Promise<boolean> {
-  const settings = await prisma.settings.findUnique({ where: { id: "global" } });
-  const webhookSecret = settings?.mayarWebhookSecret ? decrypt(settings.mayarWebhookSecret) : null;
+  let settings: { mayarWebhookSecret: string | null } | null = null;
+
+  if (organizationId) {
+    settings = await prisma.settings.findFirst({
+      where: { organizationId },
+      select: { mayarWebhookSecret: true },
+    });
+  } else {
+    settings = await prisma.settings.findFirst({
+      where: { mayarWebhookSecret: { not: null } },
+      select: { mayarWebhookSecret: true },
+    });
+  }
+
+  const webhookSecret = settings?.mayarWebhookSecret
+    ? decrypt(settings.mayarWebhookSecret)
+    : null;
 
   if (!webhookSecret) {
     console.error(
@@ -91,22 +96,13 @@ export async function verifyMayarWebhook(
     return false;
   }
   try {
-    // 1. Direct match (in case it is just a static API key/secret passed in header)
-    if (signature === webhookSecret) {
-      return true;
-    }
+    if (signature === webhookSecret) return true;
 
-    // 2. HMAC SHA-256
     const expectedSha256 = crypto.createHmac("sha256", webhookSecret).update(payload).digest("hex");
-    if (signature === expectedSha256) {
-      return true;
-    }
+    if (signature === expectedSha256) return true;
 
-    // 3. HMAC SHA-512 (x-callback-token is 128 characters long, which matches exactly SHA-512)
     const expectedSha512 = crypto.createHmac("sha512", webhookSecret).update(payload).digest("hex");
-    if (signature === expectedSha512) {
-      return true;
-    }
+    if (signature === expectedSha512) return true;
 
     return false;
   } catch (error) {

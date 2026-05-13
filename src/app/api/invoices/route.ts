@@ -81,7 +81,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const invoiceNumber = await generateInvoiceNumber();
+    const invoiceNumber = await generateInvoiceNumber(orgId);
 
     const defaultDueDate = new Date();
     defaultDueDate.setDate(defaultDueDate.getDate() + 7);

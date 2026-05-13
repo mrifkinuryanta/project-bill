@@ -1,11 +1,17 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 
 export async function checkInvoiceStatus(invoiceId: string) {
     try {
-        const invoice = await prisma.invoice.findUnique({
-            where: { id: invoiceId },
+        const session = await auth();
+        const where: { id: string; organizationId?: string } = { id: invoiceId };
+        if (session?.user?.activeOrganizationId) {
+          where.organizationId = session.user.activeOrganizationId;
+        }
+        const invoice = await prisma.invoice.findFirst({
+            where,
             select: { status: true },
         });
 

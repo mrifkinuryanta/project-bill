@@ -71,6 +71,7 @@ export async function POST(
       description: `Invoice for ${invoice.project.title}. ID: ${invoice.id}`,
       redirectUrl: `${baseUrl}/invoices/${invoice.id}`,
       expiredAt: expiredAtDate,
+      organizationId: invoice.organizationId,
     });
 
     const paymentUrl = mayarRes.link;
