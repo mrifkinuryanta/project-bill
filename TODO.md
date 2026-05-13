@@ -9,7 +9,7 @@
 1. ✅ 🤖 AI — Playwright E2E test + Dokploy deployment config — **DONE**
 2. ✅ 🔐 Casdoor — Phase 5 (middleware) + Phase 6 (testing) — **DONE**
 3. 💳 Partial Payments & Milestone Billing — **NEXT**
-4. 🌐 Client Portal (Multitenant Dashboard)
+4. 🌐 Client Portal — Multi-Tenant Org Isolation (Foundation) — **IN PROGRESS**
 5. 🔗 Stripe Integration
 
 ---
@@ -130,8 +130,24 @@
 
 ---
 
-### 2. 🌐 Client Portal (Multitenant Dashboard) — Sprint 17-18
+### 2. 🌐 Client Portal — Multi-Tenant Org Isolation (Foundation) — Sprint 17-18
 
+> **IN PROGRESS** — Foundation layer untuk isolation data antar organisasi sebelum Client Portal bisa jalan.
+
+#### Phase 0 — Multi-Tenant Org Isolation ✅
+- [x] Schema Prisma — `Organization`, `OrganizationMember`, `Invite` models
+- [x] Row-Level Security — `src/lib/rls.ts` (tenant-aware data access)
+- [x] Organization delete endpoint — `/api/organizations/[id]/delete/`
+- [x] Organization export endpoint — `/api/organizations/[id]/export/`
+- [x] Invite system — create, accept, reject flow — `/api/invites/`
+- [x] Organization invites — `/api/organizations/[id]/invites/`
+- [x] Public invite page — `src/app/(public)/invite/`
+- [x] Cron purge orgs — `/api/cron/purge-orgs/`
+- [x] Unit tests — `invites.test.ts`, `org-isolation.test.ts`
+- [ ] Integrasi org isolation ke semua resource (clients, projects, invoices)
+- [ ] Tenant-aware middleware untuk dashboard & API routes
+
+#### Phase 1 — Client Portal Auth & Dashboard
 - [ ] Desain model `ClientAuth` (magic link ke email), terpisah dari model `User`
 - [ ] Buat schema Prisma untuk `ClientAuth`
 - [ ] Migrasi database
